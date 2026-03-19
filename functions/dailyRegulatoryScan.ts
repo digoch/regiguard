@@ -196,6 +196,7 @@ Respond with a JSON object containing:
 
       const alert = await base44.asServiceRole.entities.ComplianceAlert.create({
         title: `[${source.regime}] ${notice.title} — Impact on: ${item.item_name}`,
+        customer_id: item.belongs_to_customer || null,
         source: source.id,
         notice_type: notice.notice_type,
         source_url: notice.source_url,
