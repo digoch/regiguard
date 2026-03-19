@@ -43,7 +43,7 @@ async function runWithConcurrency(tasks, limit) {
   return results;
 }
 
-async function processSource(source, watchlistItems, base44) {
+async function processSource(source, watchlistItems, customersMap, base44) {
   console.log(`[DailyRegulatoryScan] Processing source: ${source.name} (${source.regime})`);
 
   const fetchResult = await withRetry(() =>
