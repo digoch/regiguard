@@ -204,7 +204,7 @@ Return a concise summary of relevant regulatory content found in this chunk. If 
 
     const matchResults = await runWithConcurrency(matchTasks, MAX_CONCURRENCY);
 
-    for (const { item, matchResult, model } of matchResults) {
+    for (const { item, matchResult, model, customer } of matchResults) {
       if (!matchResult?.is_match) continue;
 
       const auditMetadata = {
@@ -218,6 +218,7 @@ Return a concise summary of relevant regulatory content found in this chunk. If 
       const alert = await base44.asServiceRole.entities.ComplianceAlert.create({
         title: `[${source.regime}] ${notice.title} — Impact on: ${item.item_name}`,
         customer_id: item.belongs_to_customer || null,
+        target_recipient: customer?.primary_contact_email || null,
         source: source.id,
         notice_type: notice.notice_type,
         source_url: notice.source_url,
