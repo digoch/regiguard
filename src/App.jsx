@@ -12,6 +12,7 @@ import Watchlist from '@/pages/Watchlist';
 import Sources from '@/pages/Sources';
 import AuditLedger from '@/pages/AuditLedger';
 import Settings from '@/pages/Settings';
+import ClientManagement from '@/pages/ClientManagement';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
