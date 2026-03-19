@@ -268,7 +268,7 @@ Deno.serve(async (req) => {
     }
 
     // Process all sources in parallel (capped at MAX_CONCURRENCY)
-    const sourceTasks = sources.map(source => () => processSource(source, watchlistItems, base44));
+    const sourceTasks = sources.map(source => () => processSource(source, watchlistItems, customersMap, base44));
     const sourceResults = await runWithConcurrency(sourceTasks, MAX_CONCURRENCY);
     const allAlerts = sourceResults.flat();
 
