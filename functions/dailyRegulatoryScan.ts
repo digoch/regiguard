@@ -232,7 +232,7 @@ Return a concise summary of relevant regulatory content found in this chunk. If 
       });
 
       console.log(`[DailyRegulatoryScan] ✅ Alert created: "${alert.title}" | Severity: ${alert.ai_proposed_severity}`);
-      sourceAlerts.push({ alert, notice, matchResult, auditMetadata });
+      sourceAlerts.push({ alert, notice, matchResult, auditMetadata, item, customer });
     }
   }
 
