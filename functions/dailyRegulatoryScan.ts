@@ -272,33 +272,63 @@ Deno.serve(async (req) => {
     const sourceResults = await runWithConcurrency(sourceTasks, MAX_CONCURRENCY);
     const allAlerts = sourceResults.flat();
 
-    // Send emails for high/critical alerts
+    // Send personalized emails to each customer's primary contact
+    const firmName = configs?.[0]?.firm_name || 'RegIntel';
+    const emailTasks = allAlerts
+      .filter(({ alert }) => alert.target_recipient)
+      .map(({ alert, notice, matchResult, auditMetadata, item, customer }) => () =>
+        base44.asServiceRole.integrations.Core.SendEmail({
+          from_name: firmName,
+          to: alert.target_recipient,
+          subject: `[${firmName} Alert] Action Required for ${customer?.customer_name || 'Your Organization'}: ${item.item_name}`,
+          body: `Dear ${customer?.customer_name || 'Compliance Team'},
+
+A new ${alert.ai_proposed_severity.toUpperCase()} severity regulatory alert has been identified that requires your attention.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ALERT SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Item Affected: ${item.item_name}
+Notice: ${notice.title}
+Regime: ${notice.notice_type?.replace('_', ' ').toUpperCase()}
+Published: ${notice.publication_date}
+Severity: ${alert.ai_proposed_severity.toUpperCase()}
+Source: ${notice.source_url}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPACT ASSESSMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${matchResult.impact_assessment}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI RATIONALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${matchResult.rationale}
+
+Please log in to the compliance portal to review and confirm this alert.
+
+This alert was generated on ${auditMetadata.scan_timestamp} by ${firmName}.`.trim(),
+        })
+      );
+
+    if (emailTasks.length > 0) {
+      await runWithConcurrency(emailTasks, 3);
+      console.log(`[DailyRegulatoryScan] 📧 Sent ${emailTasks.length} personalized email(s).`);
+    }
+
+    // Also notify the firm's admin email for high/critical alerts
     if (alertEmail) {
-      const emailTasks = allAlerts
+      const adminEmailTasks = allAlerts
         .filter(({ alert }) => ['high', 'critical'].includes(alert.ai_proposed_severity))
         .map(({ alert, notice, matchResult, auditMetadata }) => () =>
           base44.asServiceRole.integrations.Core.SendEmail({
+            from_name: firmName,
             to: alertEmail,
-            subject: `[${alert.ai_proposed_severity.toUpperCase()}] Regulatory Alert: ${notice.title}`,
-            body: `A new ${alert.ai_proposed_severity.toUpperCase()} severity compliance alert has been generated.
-
-Title: ${alert.title}
-Notice Type: ${notice.notice_type}
-Published: ${notice.publication_date}
-Source URL: ${notice.source_url}
-
-Impact Assessment:
-${matchResult.impact_assessment}
-
-AI Rationale:
-${matchResult.rationale}
-
-Scan Timestamp: ${auditMetadata.scan_timestamp}
-
-Please log in to review and confirm this alert.`.trim(),
+            subject: `[${alert.ai_proposed_severity.toUpperCase()}] Internal Alert: ${notice.title}`,
+            body: `Internal notification: A ${alert.ai_proposed_severity.toUpperCase()} severity alert was generated.\n\nTitle: ${alert.title}\nSource: ${notice.source_url}\nScan Timestamp: ${auditMetadata.scan_timestamp}`.trim(),
           })
         );
-      await runWithConcurrency(emailTasks, 3);
+      if (adminEmailTasks.length > 0) await runWithConcurrency(adminEmailTasks, 3);
     }
 
     const summary = `Scan complete. ${allAlerts.length} alert(s) created from ${sources.length} source(s).`;
