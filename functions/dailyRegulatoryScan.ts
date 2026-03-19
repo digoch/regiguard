@@ -131,39 +131,53 @@ Return a concise summary of relevant regulatory content found in this chunk. If 
     const matchTasks = watchlistItems.map(item => () =>
       withRetry(async () => {
         const MODEL = 'gemini_3_flash';
+        const customer = customersMap[item.belongs_to_customer] || null;
+        const customerName = customer?.customer_name || 'the client';
+        const industry = customer?.industry || 'their industry';
+        const riskTolerance = customer?.risk_tolerance || 'medium';
+
         const matchResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-          prompt: `You are a senior export control compliance officer.
+          prompt: `You are a senior export control compliance officer serving a legal and consulting firm.
 
-Regulatory Notice: "${notice.title}" (${notice.notice_type}) from ${source.name} (${source.regime})
-Published: ${notice.publication_date}
-Source URL: ${notice.source_url}
+    Regulatory Notice: "${notice.title}" (${notice.notice_type}) from ${source.name} (${source.regime})
+    Published: ${notice.publication_date}
+    Source URL: ${notice.source_url}
 
-Consolidated Regulatory Summary:
-"""
-${consolidatedSummary}
-"""
+    Consolidated Regulatory Summary:
+    """
+    ${consolidatedSummary}
+    """
 
-Watchlist Item to evaluate:
-- Name: ${item.item_name}
-- Description: ${item.description}
-- ECCN: ${item.eccn || 'N/A'}
-- EU Control Number: ${item.eu_control_number || 'N/A'}
-- UK Control Entry: ${item.uk_control_entry || 'N/A'}
-- HS Code: ${item.hs_code || 'N/A'}
-- Keywords: ${(item.keywords || []).join(', ') || 'N/A'}
+    Watchlist Item to evaluate:
+    - Name: ${item.item_name}
+    - Description: ${item.description}
+    - ECCN: ${item.eccn || 'N/A'}
+    - EU Control Number: ${item.eu_control_number || 'N/A'}
+    - UK Control Entry: ${item.uk_control_entry || 'N/A'}
+    - HS Code: ${item.hs_code || 'N/A'}
+    - Keywords: ${(item.keywords || []).join(', ') || 'N/A'}
 
-Does this regulatory notice materially affect this watchlist item? Consider:
-1. Direct mentions of the item, its classification codes, or synonyms
-2. Broader category changes that would encompass this item
-3. Destination/country restrictions relevant to this item
-4. License requirement changes
+    Client Context:
+    - Customer Name: ${customerName}
+    - Industry: ${industry}
+    - Risk Tolerance: ${riskTolerance}
 
-Respond with a JSON object containing:
-- is_match (boolean): true only if there is a clear, material impact
-- severity (string): one of "low", "medium", "high", "critical"
-- rationale (string): precise explanation of WHY this notice affects this item
-- impact_assessment (string): operational impact for a compliance officer
-- matched_chunk_indices (array of integers)`,
+    Does this regulatory notice materially affect this watchlist item? Consider:
+    1. Direct mentions of the item, its classification codes, or synonyms
+    2. Broader category changes that would encompass this item
+    3. Destination/country restrictions relevant to this item
+    4. License requirement changes
+
+    Severity Tuning Rule: If the customer's risk_tolerance is "high" and your initial severity assessment is "medium", automatically escalate severity to "high".
+
+    Impact Assessment Requirement: Begin the impact_assessment field with: "For ${customerName} in the ${industry} sector, this change means..."
+
+    Respond with a JSON object containing:
+    - is_match (boolean): true only if there is a clear, material impact
+    - severity (string): one of "low", "medium", "high", "critical" — apply the severity tuning rule above
+    - rationale (string): precise explanation of WHY this notice affects this item
+    - impact_assessment (string): must start with "For ${customerName} in the ${industry} sector, this change means..."
+    - matched_chunk_indices (array of integers)`,
           model: MODEL,
           response_json_schema: {
             type: 'object',
@@ -177,7 +191,14 @@ Respond with a JSON object containing:
           }
         });
 
-        return { item, matchResult, model: MODEL };
+        // Enforce severity escalation in code as a safety net
+        let finalSeverity = matchResult?.severity || 'medium';
+        if (riskTolerance === 'high' && finalSeverity === 'medium') {
+          finalSeverity = 'high';
+        }
+        if (matchResult) matchResult.severity = finalSeverity;
+
+        return { item, matchResult, model: MODEL, customer };
       })
     );
 
