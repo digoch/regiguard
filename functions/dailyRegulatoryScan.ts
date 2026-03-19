@@ -250,11 +250,15 @@ Deno.serve(async (req) => {
 
     console.log(`[DailyRegulatoryScan] Starting scan at ${new Date().toISOString()}`);
 
-    const [sources, watchlistItems, configs] = await Promise.all([
+    const [sources, watchlistItems, configs, customers] = await Promise.all([
       base44.asServiceRole.entities.RegulatorySource.filter({ is_active: true }),
       base44.asServiceRole.entities.WatchlistItem.filter({ status: 'active' }),
       base44.asServiceRole.entities.GlobalConfig.list(),
+      base44.asServiceRole.entities.Customer.list(),
     ]);
+
+    // Build a lookup map for O(1) customer access
+    const customersMap = Object.fromEntries(customers.map(c => [c.id, c]));
 
     const alertEmail = configs?.[0]?.compliance_alert_email;
     console.log(`[DailyRegulatoryScan] Loaded ${sources.length} sources, ${watchlistItems.length} watchlist items.`);
