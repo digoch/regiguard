@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { ShieldAlert, ListChecks, Globe, BookOpen, Settings2, LayoutDashboard } from 'lucide-react';
+import { ShieldAlert, ListChecks, Globe, BookOpen, Settings2, LayoutDashboard, Users } from 'lucide-react';
 
 const nav = [
   { to: '/Dashboard', icon: <LayoutDashboard className="w-4 h-4" />, label: 'Dashboard' },
