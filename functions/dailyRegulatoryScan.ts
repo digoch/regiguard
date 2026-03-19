@@ -26,42 +26,38 @@ async function withRetry(fn, maxRetries = MAX_RETRIES) {
   }
 }
 
-// Fixed concurrency runner using a semaphore pattern
 async function runWithConcurrency(tasks, limit) {
   const results = [];
   let index = 0;
-
   async function worker() {
     while (index < tasks.length) {
       const i = index++;
       results[i] = await tasks[i]();
     }
   }
-
   const workers = Array.from({ length: Math.min(limit, tasks.length) }, () => worker());
   await Promise.all(workers);
   return results;
 }
 
-async function processSource(source, watchlistItems, customersMap, base44) {
-  console.log(`[DailyRegulatoryScan] Processing source: ${source.name} (${source.regime})`);
+async function processSource(source, libraryItems, customersMap, itemToCustomersMap, firmName, base44) {
+  console.log(`[Scan] Processing source: ${source.name} (${source.regime})`);
 
   const fetchResult = await withRetry(() =>
     base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: `You are a regulatory intelligence agent. Given the following URL for a regulatory source, 
-extract all new regulatory notices published in the last 24 hours. 
+      prompt: `You are a regulatory intelligence agent. Extract all new regulatory notices published in the last 24 hours from this source.
 Source: ${source.name}, Regime: ${source.regime}, URL: ${source.feed_url}
 Scraping logic: ${source.scraping_logic}
 Notice types to watch: ${source.notice_types_to_watch.join(', ')}
 
-Return a JSON array of notices. Each notice object must have:
+Return a JSON array of notices with fields:
 - title (string)
 - notice_type (one of: final_rule, proposed_rule, interim_rule, guidance, amendment)
-- source_url (string, full URL to the notice)
+- source_url (string)
 - publication_date (string, YYYY-MM-DD)
-- full_text (string, full text content of the notice if available, else a detailed summary)
+- full_text (string)
 
-Return only notices from the last 24 hours. If none found, return an empty array.`,
+Return only notices from the last 24 hours. If none, return empty array.`,
       add_context_from_internet: true,
       model: 'gemini_3_flash',
       response_json_schema: {
@@ -86,34 +82,29 @@ Return only notices from the last 24 hours. If none found, return an empty array
   );
 
   const notices = fetchResult?.notices || [];
-  console.log(`[DailyRegulatoryScan] Found ${notices.length} notices from ${source.name}`);
+  console.log(`[Scan] Found ${notices.length} notices from ${source.name}`);
 
-  const sourceAlerts = [];
+  const allAlerts = [];
 
   for (const notice of notices) {
     const noticeText = notice.full_text || notice.title;
     const chunks = chunkText(noticeText);
-    console.log(`[DailyRegulatoryScan] Notice: "${notice.title}" → ${chunks.length} chunks`);
 
-    // MAP PHASE
+    // MAP: summarise each chunk
     const mapTasks = chunks.map(chunk => () =>
       withRetry(async () => {
-        const mapResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-          prompt: `You are a trade compliance expert. Read the following excerpt (chunk ${chunk.index + 1}) from a regulatory notice and extract any relevant information about:
-- Controlled items, technologies, or commodities
-- Country or destination restrictions
-- License requirements or changes
-- Any amendments to control lists
+        const summary = await base44.asServiceRole.integrations.Core.InvokeLLM({
+          prompt: `You are a trade compliance expert. Read this excerpt (chunk ${chunk.index + 1}) from a regulatory notice and extract relevant information about controlled items, technologies, country restrictions, license requirements, or control list amendments.
 
 Chunk text:
 """
 ${chunk.text}
 """
 
-Return a concise summary of relevant regulatory content found in this chunk. If nothing relevant, return "NO_RELEVANT_CONTENT".`,
+Return a concise summary of relevant regulatory content. If nothing relevant, return "NO_RELEVANT_CONTENT".`,
           model: 'gemini_3_flash',
         });
-        return { chunkIndex: chunk.index, summary: mapResult };
+        return { chunkIndex: chunk.index, summary };
       })
     );
 
@@ -121,122 +112,136 @@ Return a concise summary of relevant regulatory content found in this chunk. If 
     const relevantSummaries = chunkSummaries.filter(s => s?.summary && !s.summary.includes('NO_RELEVANT_CONTENT'));
 
     if (!relevantSummaries.length) {
-      console.log(`[DailyRegulatoryScan] No relevant content in notice: "${notice.title}"`);
+      console.log(`[Scan] No relevant content in: "${notice.title}"`);
       continue;
     }
 
     const consolidatedSummary = relevantSummaries.map(s => `[Chunk ${s.chunkIndex}] ${s.summary}`).join('\n\n');
 
-    // REDUCE PHASE
-    const matchTasks = watchlistItems.map(item => () =>
+    // REDUCE: match each library item
+    const matchTasks = libraryItems.map(item => () =>
       withRetry(async () => {
-        const MODEL = 'gemini_3_flash';
-        const customer = customersMap[item.belongs_to_customer] || null;
-        const customerName = customer?.customer_name || 'the client';
-        const industry = customer?.industry || 'their industry';
-        const riskTolerance = customer?.risk_tolerance || 'medium';
-
         const matchResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-          prompt: `You are a senior export control compliance officer serving a legal and consulting firm.
+          prompt: `You are a senior export control compliance officer.
 
-    Regulatory Notice: "${notice.title}" (${notice.notice_type}) from ${source.name} (${source.regime})
-    Published: ${notice.publication_date}
-    Source URL: ${notice.source_url}
+Regulatory Notice: "${notice.title}" (${notice.notice_type}) from ${source.name} (${source.regime})
+Published: ${notice.publication_date}
+Source URL: ${notice.source_url}
 
-    Consolidated Regulatory Summary:
-    """
-    ${consolidatedSummary}
-    """
+Consolidated Summary:
+"""
+${consolidatedSummary}
+"""
 
-    Watchlist Item to evaluate:
-    - Name: ${item.item_name}
-    - Description: ${item.description}
-    - ECCN: ${item.eccn || 'N/A'}
-    - EU Control Number: ${item.eu_control_number || 'N/A'}
-    - UK Control Entry: ${item.uk_control_entry || 'N/A'}
-    - HS Code: ${item.hs_code || 'N/A'}
-    - Keywords: ${(item.keywords || []).join(', ') || 'N/A'}
+Watchlist Library Item:
+- Name: ${item.item_name}
+- Description: ${item.description}
+- ECCN: ${item.eccn || 'N/A'}
+- EU Control Number: ${item.eu_control_number || 'N/A'}
+- UK Control Entry: ${item.uk_control_entry || 'N/A'}
+- HS Code: ${item.hs_code || 'N/A'}
+- Keywords: ${(item.keywords || []).join(', ') || 'N/A'}
 
-    Client Context:
-    - Customer Name: ${customerName}
-    - Industry: ${industry}
-    - Risk Tolerance: ${riskTolerance}
+Does this notice materially affect this item? Consider direct mentions, classification codes, category changes, destination restrictions, and license requirement changes.
 
-    Does this regulatory notice materially affect this watchlist item? Consider:
-    1. Direct mentions of the item, its classification codes, or synonyms
-    2. Broader category changes that would encompass this item
-    3. Destination/country restrictions relevant to this item
-    4. License requirement changes
-
-    Severity Tuning Rule: If the customer's risk_tolerance is "high" and your initial severity assessment is "medium", automatically escalate severity to "high".
-
-    Impact Assessment Requirement: Begin the impact_assessment field with: "For ${customerName} in the ${industry} sector, this change means..."
-
-    Respond with a JSON object containing:
-    - is_match (boolean): true only if there is a clear, material impact
-    - severity (string): one of "low", "medium", "high", "critical" — apply the severity tuning rule above
-    - rationale (string): precise explanation of WHY this notice affects this item
-    - impact_assessment (string): must start with "For ${customerName} in the ${industry} sector, this change means..."
-    - matched_chunk_indices (array of integers)`,
-          model: MODEL,
+Respond with JSON:
+- is_match (boolean)
+- base_severity (string): one of "low", "medium", "high", "critical" — before customer risk tuning
+- rationale (string)
+- base_impact_assessment (string): generic impact summary for this item
+- matched_chunk_indices (array of integers)`,
+          model: 'gemini_3_flash',
           response_json_schema: {
             type: 'object',
             properties: {
               is_match: { type: 'boolean' },
-              severity: { type: 'string' },
+              base_severity: { type: 'string' },
               rationale: { type: 'string' },
-              impact_assessment: { type: 'string' },
+              base_impact_assessment: { type: 'string' },
               matched_chunk_indices: { type: 'array', items: { type: 'integer' } },
             }
           }
         });
-
-        // Enforce severity escalation in code as a safety net
-        let finalSeverity = matchResult?.severity || 'medium';
-        if (riskTolerance === 'high' && finalSeverity === 'medium') {
-          finalSeverity = 'high';
-        }
-        if (matchResult) matchResult.severity = finalSeverity;
-
-        return { item, matchResult, model: MODEL, customer };
+        return { item, matchResult };
       })
     );
 
     const matchResults = await runWithConcurrency(matchTasks, MAX_CONCURRENCY);
 
-    for (const { item, matchResult, model, customer } of matchResults) {
+    for (const { item, matchResult } of matchResults) {
       if (!matchResult?.is_match) continue;
 
-      const auditMetadata = {
-        model_version: model,
-        chunk_indices_matched: matchResult.matched_chunk_indices || [],
-        total_chunks_processed: chunks.length,
-        rationale: matchResult.rationale,
-        scan_timestamp: new Date().toISOString(),
-      };
+      // Fan out: one alert per linked customer
+      const linkedCustomers = itemToCustomersMap[item.id] || [];
+      if (!linkedCustomers.length) {
+        console.log(`[Scan] Item "${item.item_name}" matched but has no linked customers — skipping.`);
+        continue;
+      }
 
-      const alert = await base44.asServiceRole.entities.ComplianceAlert.create({
-        title: `[${source.regime}] ${notice.title} — Impact on: ${item.item_name}`,
-        customer_id: item.belongs_to_customer || null,
-        target_recipient: customer?.primary_contact_email || null,
-        source: source.id,
-        notice_type: notice.notice_type,
-        source_url: notice.source_url,
-        publication_date: notice.publication_date,
-        matched_watchlist_items: [item.id],
-        summary: consolidatedSummary.slice(0, 2000),
-        impact_assessment: matchResult.impact_assessment,
-        ai_proposed_severity: matchResult.severity || 'medium',
-        status: 'pending',
-        audit_metadata: auditMetadata,
-      });
+      const customerAlertTasks = linkedCustomers.map(customer => () =>
+        withRetry(async () => {
+          const customerName = customer.customer_name || 'the client';
+          const industry = customer.industry || 'their industry';
+          const riskTolerance = customer.risk_tolerance || 'medium';
 
-      console.log(`[DailyRegulatoryScan] ✅ Alert created: "${alert.title}" | Severity: ${alert.ai_proposed_severity}`);
-      sourceAlerts.push({ alert, notice, matchResult, auditMetadata, item, customer });
+          // Tune severity per customer risk tolerance
+          let severity = matchResult.base_severity || 'medium';
+          if (riskTolerance === 'high' && severity === 'medium') severity = 'high';
+          if (riskTolerance === 'low' && severity === 'high') severity = 'medium';
+
+          // Personalize impact assessment
+          const personalizedImpact = await base44.asServiceRole.integrations.Core.InvokeLLM({
+            prompt: `You are a compliance advisor. Personalize this impact assessment for a specific client.
+
+Base Assessment: "${matchResult.base_impact_assessment}"
+
+Client:
+- Name: ${customerName}
+- Industry: ${industry}
+- Risk Tolerance: ${riskTolerance}
+
+Rewrite the impact assessment starting with: "For ${customerName} in the ${industry} sector, this change means..."
+Keep it concise (2-3 sentences).`,
+            model: 'gemini_3_flash',
+          });
+
+          const auditMetadata = {
+            model_version: 'gemini_3_flash',
+            chunk_indices_matched: matchResult.matched_chunk_indices || [],
+            rationale: matchResult.rationale,
+            base_severity: matchResult.base_severity,
+            tuned_severity: severity,
+            risk_tolerance_applied: riskTolerance,
+            scan_timestamp: new Date().toISOString(),
+          };
+
+          const alert = await base44.asServiceRole.entities.ComplianceAlert.create({
+            title: `[${source.regime}] ${notice.title} — Impact on: ${item.item_name}`,
+            customer_id: customer.id,
+            target_recipient: customer.primary_contact_email || null,
+            source: source.id,
+            notice_type: notice.notice_type,
+            source_url: notice.source_url,
+            publication_date: notice.publication_date,
+            matched_watchlist_items: [item.id],
+            summary: consolidatedSummary.slice(0, 2000),
+            impact_assessment: personalizedImpact,
+            ai_proposed_severity: severity,
+            status: 'pending',
+            audit_metadata: auditMetadata,
+          });
+
+          console.log(`[Scan] ✅ Alert for "${customerName}" | Item: "${item.item_name}" | Severity: ${severity}`);
+          return { alert, notice, matchResult, auditMetadata, item, customer, severity, personalizedImpact };
+        })
+      );
+
+      const customerAlerts = await runWithConcurrency(customerAlertTasks, MAX_CONCURRENCY);
+      allAlerts.push(...customerAlerts.filter(Boolean));
     }
   }
 
-  return sourceAlerts;
+  return allAlerts;
 }
 
 Deno.serve(async (req) => {
@@ -248,57 +253,68 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    console.log(`[DailyRegulatoryScan] Starting scan at ${new Date().toISOString()}`);
+    console.log(`[Scan] Starting at ${new Date().toISOString()}`);
 
-    const [sources, watchlistItems, configs, customers] = await Promise.all([
+    const [sources, libraryItems, links, customers, configs] = await Promise.all([
       base44.asServiceRole.entities.RegulatorySource.filter({ is_active: true }),
-      base44.asServiceRole.entities.WatchlistItem.filter({ status: 'active' }),
-      base44.asServiceRole.entities.GlobalConfig.list(),
+      base44.asServiceRole.entities.GlobalWatchlistLibrary.filter({ status: 'active' }),
+      base44.asServiceRole.entities.CustomerLibraryLink.list(),
       base44.asServiceRole.entities.Customer.list(),
+      base44.asServiceRole.entities.GlobalConfig.list(),
     ]);
 
-    // Build a lookup map for O(1) customer access
+    // Build lookup maps
     const customersMap = Object.fromEntries(customers.map(c => [c.id, c]));
 
-    const alertEmail = configs?.[0]?.compliance_alert_email;
-    console.log(`[DailyRegulatoryScan] Loaded ${sources.length} sources, ${watchlistItems.length} watchlist items.`);
-
-    if (!watchlistItems.length || !sources.length) {
-      return Response.json({ message: 'No active sources or watchlist items. Scan skipped.' });
+    // itemId → [customer, customer, ...]
+    const itemToCustomersMap = {};
+    for (const link of links) {
+      if (!itemToCustomersMap[link.library_item_id]) itemToCustomersMap[link.library_item_id] = [];
+      const customer = customersMap[link.customer_id];
+      if (customer) itemToCustomersMap[link.library_item_id].push(customer);
     }
 
-    // Process all sources in parallel (capped at MAX_CONCURRENCY)
-    const sourceTasks = sources.map(source => () => processSource(source, watchlistItems, customersMap, base44));
-    const sourceResults = await runWithConcurrency(sourceTasks, MAX_CONCURRENCY);
-    const allAlerts = sourceResults.flat();
-
-    // Send personalized emails to each customer's primary contact
     const firmName = configs?.[0]?.firm_name || 'RegIntel';
+    const alertEmail = configs?.[0]?.compliance_alert_email;
+
+    console.log(`[Scan] ${sources.length} sources, ${libraryItems.length} library items, ${links.length} customer links`);
+
+    if (!libraryItems.length || !sources.length) {
+      return Response.json({ message: 'No active sources or library items. Scan skipped.' });
+    }
+
+    const sourceTasks = sources.map(source => () =>
+      processSource(source, libraryItems, customersMap, itemToCustomersMap, firmName, base44)
+    );
+    const sourceResults = await runWithConcurrency(sourceTasks, MAX_CONCURRENCY);
+    const allAlerts = sourceResults.flat().filter(Boolean);
+
+    // Send personalized emails
     const emailTasks = allAlerts
       .filter(({ alert }) => alert.target_recipient)
-      .map(({ alert, notice, matchResult, auditMetadata, item, customer }) => () =>
+      .map(({ alert, notice, matchResult, auditMetadata, item, customer, severity, personalizedImpact }) => () =>
         base44.asServiceRole.integrations.Core.SendEmail({
           from_name: firmName,
           to: alert.target_recipient,
-          subject: `[${firmName} Alert] Action Required for ${customer?.customer_name || 'Your Organization'}: ${item.item_name}`,
-          body: `Dear ${customer?.customer_name || 'Compliance Team'},
+          subject: `[${firmName} Alert] Action Required for ${customer.customer_name}: ${item.item_name}`,
+          body: `Dear ${customer.customer_name},
 
-A new ${alert.ai_proposed_severity.toUpperCase()} severity regulatory alert has been identified that requires your attention.
+A new ${severity.toUpperCase()} severity regulatory alert has been identified that requires your attention.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ALERT SUMMARY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Item Affected: ${item.item_name}
 Notice: ${notice.title}
-Regime: ${notice.notice_type?.replace('_', ' ').toUpperCase()}
+Regime: ${notice.notice_type?.replace(/_/g, ' ').toUpperCase()}
 Published: ${notice.publication_date}
-Severity: ${alert.ai_proposed_severity.toUpperCase()}
+Severity: ${severity.toUpperCase()}
 Source: ${notice.source_url}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 IMPACT ASSESSMENT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${matchResult.impact_assessment}
+${personalizedImpact}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 AI RATIONALE
@@ -307,36 +323,36 @@ ${matchResult.rationale}
 
 Please log in to the compliance portal to review and confirm this alert.
 
-This alert was generated on ${auditMetadata.scan_timestamp} by ${firmName}.`.trim(),
+Generated on ${auditMetadata.scan_timestamp} by ${firmName}.`.trim(),
         })
       );
 
     if (emailTasks.length > 0) {
       await runWithConcurrency(emailTasks, 3);
-      console.log(`[DailyRegulatoryScan] 📧 Sent ${emailTasks.length} personalized email(s).`);
+      console.log(`[Scan] 📧 Sent ${emailTasks.length} personalized email(s).`);
     }
 
-    // Also notify the firm's admin email for high/critical alerts
+    // Internal admin email for high/critical
     if (alertEmail) {
-      const adminEmailTasks = allAlerts
-        .filter(({ alert }) => ['high', 'critical'].includes(alert.ai_proposed_severity))
-        .map(({ alert, notice, matchResult, auditMetadata }) => () =>
+      const adminTasks = allAlerts
+        .filter(({ severity }) => ['high', 'critical'].includes(severity))
+        .map(({ alert, notice, auditMetadata }) => () =>
           base44.asServiceRole.integrations.Core.SendEmail({
             from_name: firmName,
             to: alertEmail,
             subject: `[${alert.ai_proposed_severity.toUpperCase()}] Internal Alert: ${notice.title}`,
-            body: `Internal notification: A ${alert.ai_proposed_severity.toUpperCase()} severity alert was generated.\n\nTitle: ${alert.title}\nSource: ${notice.source_url}\nScan Timestamp: ${auditMetadata.scan_timestamp}`.trim(),
+            body: `Internal notification: A ${alert.ai_proposed_severity.toUpperCase()} severity alert was generated.\n\nTitle: ${alert.title}\nSource: ${notice.source_url}\nScan Timestamp: ${auditMetadata.scan_timestamp}`,
           })
         );
-      if (adminEmailTasks.length > 0) await runWithConcurrency(adminEmailTasks, 3);
+      if (adminTasks.length > 0) await runWithConcurrency(adminTasks, 3);
     }
 
-    const summary = `Scan complete. ${allAlerts.length} alert(s) created from ${sources.length} source(s).`;
-    console.log(`[DailyRegulatoryScan] ${summary}`);
+    const summary = `Scan complete. ${allAlerts.length} alert(s) created across ${customers.length} customer(s) from ${sources.length} source(s).`;
+    console.log(`[Scan] ${summary}`);
     return Response.json({ success: true, alerts_created: allAlerts.length, summary });
 
   } catch (error) {
-    console.error('[DailyRegulatoryScan] Fatal error:', error.message);
+    console.error('[Scan] Fatal error:', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
