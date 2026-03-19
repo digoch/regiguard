@@ -8,6 +8,7 @@ const nav = [
   { to: '/Watchlist', icon: <ListChecks className="w-4 h-4" />, label: 'Watchlist' },
   { to: '/Sources', icon: <Globe className="w-4 h-4" />, label: 'Sources' },
   { to: '/AuditLedger', icon: <BookOpen className="w-4 h-4" />, label: 'Audit Ledger' },
+  { to: '/ClientManagement', icon: <Users className="w-4 h-4" />, label: 'Clients' },
   { to: '/Settings', icon: <Settings2 className="w-4 h-4" />, label: 'Settings' },
 ];
 
