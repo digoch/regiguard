@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Plus, Search, Pencil } from 'lucide-react';
+import { Users, Plus, Search, Pencil, ListChecks } from 'lucide-react';
+import CustomerWatchlistModal from '@/components/CustomerWatchlistModal';
 import { useToast } from '@/components/ui/use-toast';
 
 const EMPTY_FORM = { customer_name: '', industry: '', risk_tolerance: 'medium', primary_contact_email: '' };
