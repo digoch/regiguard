@@ -8,7 +8,6 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from '@/components/Layout';
 import Dashboard from '@/pages/Dashboard';
 import Alerts from '@/pages/Alerts';
-import Watchlist from '@/pages/Watchlist';
 import Sources from '@/pages/Sources';
 import AuditLedger from '@/pages/AuditLedger';
 import Settings from '@/pages/Settings';
@@ -38,7 +37,6 @@ const AuthenticatedApp = () => {
       <Route element={<Layout />}>
         <Route path="/Dashboard" element={<Dashboard />} />
         <Route path="/Alerts" element={<Alerts />} />
-        <Route path="/Watchlist" element={<Watchlist />} />
         <Route path="/Sources" element={<Sources />} />
         <Route path="/AuditLedger" element={<AuditLedger />} />
         <Route path="/Settings" element={<Settings />} />
