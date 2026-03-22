@@ -111,7 +111,10 @@ export default function ClientManagement() {
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{c.primary_contact_email}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right flex gap-1 justify-end">
+                    <Button size="sm" variant="outline" onClick={() => setWatchlistCustomer(c)} className="gap-1">
+                      <ListChecks className="w-3.5 h-3.5" /> Watchlist
+                    </Button>
                     <Button size="sm" variant="ghost" onClick={() => openEdit(c)} className="gap-1">
                       <Pencil className="w-3.5 h-3.5" /> Edit
                     </Button>
