@@ -1,3 +1,29 @@
+/**
+ * ============================================================
+ * SYSTEM INSTRUCTIONS — READ BEFORE MODIFYING THIS FUNCTION
+ * ============================================================
+ *
+ * ARCHITECTURE: Hub-and-Spoke Relational Model
+ *
+ * DATA SOURCES (the only valid entities for matching):
+ *   - GlobalLibrary      → The "Hub". Master list of controlled items (ECCNs, HS codes, etc.)
+ *   - CustomerWatchlist  → The "Link" (junction table). Connects Customers to GlobalLibrary items.
+ *   - Customer           → The "Spoke". Stores client profiles and alert routing info.
+ *   - RegulatorySource   → The "Input". URLs and scraping logic for regulatory feeds.
+ *   - ComplianceAlert    → The "Output". Stores AI-generated alerts, linked to Customer via customer_id.
+ *   - GlobalConfig       → The "Branding". Firm name and alert email.
+ *
+ * MATCHING LOGIC RULES (STRICTLY ENFORCED):
+ *   1. ALL item matching MUST query GlobalLibrary — never WatchlistItem, GlobalWatchlistLibrary, or CustomerLibraryLink.
+ *   2. Customer fan-out MUST flow through CustomerWatchlist: GlobalLibrary → CustomerWatchlist → Customer.
+ *   3. ComplianceAlert.customer_id MUST be set to the Customer.id from the CustomerWatchlist fan-out.
+ *   4. ComplianceAlert.matched_library_items MUST contain GlobalLibrary item IDs only.
+ *   5. ComplianceAlert.matched_watchlist_entries MUST contain CustomerWatchlist entry IDs only.
+ *   6. NEVER read from or write to: WatchlistItem, GlobalWatchlistLibrary, CustomerLibraryLink (DELETED).
+ *
+ * ============================================================
+ */
+
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 
 const CHUNK_SIZE = 4000;
