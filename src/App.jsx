@@ -13,6 +13,7 @@ import Sources from '@/pages/Sources';
 import AuditLedger from '@/pages/AuditLedger';
 import Settings from '@/pages/Settings';
 import ClientManagement from '@/pages/ClientManagement';
+import GlobalLibrary from '@/pages/GlobalLibrary';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -41,6 +42,7 @@ const AuthenticatedApp = () => {
         <Route path="/AuditLedger" element={<AuditLedger />} />
         <Route path="/Settings" element={<Settings />} />
         <Route path="/ClientManagement" element={<ClientManagement />} />
+        <Route path="/GlobalLibrary" element={<GlobalLibrary />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

@@ -1,18 +1,27 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { ShieldAlert, ListChecks, Globe, BookOpen, Settings2, LayoutDashboard, Users } from 'lucide-react';
+import { ShieldAlert, ListChecks, Globe, BookOpen, Settings2, LayoutDashboard, Users, Library } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 const nav = [
   { to: '/Dashboard', icon: <LayoutDashboard className="w-4 h-4" />, label: 'Dashboard' },
+  { to: '/ClientManagement', icon: <Users className="w-4 h-4" />, label: 'Clients' },
+  { to: '/GlobalLibrary', icon: <Library className="w-4 h-4" />, label: 'Library' },
   { to: '/Alerts', icon: <ShieldAlert className="w-4 h-4" />, label: 'Alerts' },
-  { to: '/Watchlist', icon: <ListChecks className="w-4 h-4" />, label: 'Watchlist' },
   { to: '/Sources', icon: <Globe className="w-4 h-4" />, label: 'Sources' },
   { to: '/AuditLedger', icon: <BookOpen className="w-4 h-4" />, label: 'Audit Ledger' },
-  { to: '/ClientManagement', icon: <Users className="w-4 h-4" />, label: 'Clients' },
   { to: '/Settings', icon: <Settings2 className="w-4 h-4" />, label: 'Settings' },
 ];
 
 export default function Layout() {
+  const [firmName, setFirmName] = useState('RegIntel');
+
+  useEffect(() => {
+    base44.entities.GlobalConfig.list().then(configs => {
+      if (configs?.[0]?.firm_name) setFirmName(configs[0].firm_name);
+    });
+  }, []);
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar */}
@@ -20,9 +29,9 @@ export default function Layout() {
         <div className="px-5 py-5 border-b border-slate-700">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-blue-400" />
-            <span className="font-bold text-sm text-white">RegIntel</span>
+            <span className="font-bold text-sm text-white">{firmName}</span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">Export Control AI</p>
+          <p className="text-xs text-slate-500 mt-1">Regulatory Portal</p>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
           {nav.map(n => (
