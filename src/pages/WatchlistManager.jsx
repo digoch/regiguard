@@ -283,13 +283,13 @@ export default function WatchlistManager() {
                     return (
                       <tr key={entry.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">
-                          {customer?.customer_name || <span className="text-slate-400">—</span>}
+                          {customer?.customer_name || <span className="text-red-400 text-xs italic">⚠ unresolved ID: {entry.customer_link?.slice(0,8)}…</span>}
                         </td>
                         <td className="px-4 py-3 text-slate-800">
-                          {lib?.item_name || <span className="text-slate-400">—</span>}
+                          {lib?.item_name || <span className="text-red-400 text-xs italic">⚠ unresolved ID: {entry.library_item_link?.slice(0,8)}…</span>}
                         </td>
                         <td className="px-4 py-3 font-mono text-xs text-slate-600">
-                          {lib?.eccn || '—'}
+                          {lib?.eccn || <span className="text-slate-300">—</span>}
                         </td>
                         <td className="px-4 py-3 text-slate-500 max-w-xs">
                           {entry.client_specific_notes
