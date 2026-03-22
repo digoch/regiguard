@@ -89,11 +89,23 @@ Deno.serve(async (req) => {
     const matchTasks = libraryItems.map(item => () =>
       withRetry(async () => {
         const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
-          prompt: `You are a senior export control compliance officer.
+          prompt: `You are a senior export control compliance officer reviewing a regulatory notice on behalf of a consulting firm.
 
-Regulatory Notice:
+Your task is to determine whether this regulatory notice is POTENTIALLY RELEVANT to the library item below.
+Use a LOW threshold — flag as a match if there is ANY plausible connection, including:
+  - Exact ECCN code match (e.g., notice mentions "3A001" and item has ECCN 3A001)
+  - Keyword overlap (e.g., notice says "semiconductors", item is "microprocessor" — flag it)
+  - Broad category overlap (e.g., notice affects "integrated circuits" and item is a chip)
+  - Related technology (e.g., notice mentions "TOPS", "AI chips", "advanced computing" and item is a high-performance processor)
+  - Any country, license, or classification change that could apply to this item's technology category
+  - Fuzzy / synonym matches: "semiconductor" ↔ "microprocessor", "drone" ↔ "UAV", "AI accelerator" ↔ "GPU"
+
+When in doubt, set is_match=true so a human consultant can review. It is better to over-flag than to miss a relevant regulation.
+Only set is_match=false if the notice is completely unrelated to this item's technology domain.
+
+Full Regulatory Notice Text:
 """
-${notice_text.slice(0, 6000)}
+${notice_text}
 """
 
 Global Library Item:
@@ -104,12 +116,10 @@ Global Library Item:
 - HS Code: ${item.hs_code || 'N/A'}
 - Keywords: ${(item.keywords || []).join(', ') || 'N/A'}
 
-Does this regulatory notice materially affect this library item? Use semantic matching on the technical description and keyword matching. Consider direct mentions, classification codes, category changes, destination restrictions, and license requirement changes.
-
 Respond with JSON:
-- is_match (boolean)
+- is_match (boolean): true if ANY plausible connection exists
 - base_severity (string): one of "low", "medium", "high", "critical"
-- rationale (string): 1-2 sentences explaining why it matches or not
+- rationale (string): 1-2 sentences explaining the connection found (or why definitively excluded)
 - base_impact_assessment (string): if match, generic impact summary for this item`,
           model: 'gemini_3_flash',
           response_json_schema: {
