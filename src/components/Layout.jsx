@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { ShieldAlert, ListChecks, Globe, BookOpen, Settings2, LayoutDashboard, Users, Library } from 'lucide-react';
+import { ShieldAlert, ListChecks, Globe, BookOpen, Settings2, LayoutDashboard, Users, Library, Link2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const nav = [

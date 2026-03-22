@@ -112,8 +112,8 @@ export default function ClientManagement() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">{c.primary_contact_email}</td>
                   <td className="px-4 py-3 text-right flex gap-1 justify-end">
-                    <Button size="sm" variant="outline" onClick={() => setWatchlistCustomer(c)} className="gap-1">
-                      <ListChecks className="w-3.5 h-3.5" /> Watchlist
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/WatchlistManager?customer_id=${c.id}`)} className="gap-1">
+                      <ListChecks className="w-3.5 h-3.5" /> Edit Watchlist
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => openEdit(c)} className="gap-1">
                       <Pencil className="w-3.5 h-3.5" /> Edit
@@ -125,12 +125,6 @@ export default function ClientManagement() {
           </table>
         </div>
       </div>
-
-      <CustomerWatchlistModal
-        customer={watchlistCustomer}
-        open={!!watchlistCustomer}
-        onClose={() => setWatchlistCustomer(null)}
-      />
 
       {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
