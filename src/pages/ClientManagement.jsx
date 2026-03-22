@@ -126,6 +126,12 @@ export default function ClientManagement() {
         </div>
       </div>
 
+      <CustomerWatchlistModal
+        customer={watchlistCustomer}
+        open={!!watchlistCustomer}
+        onClose={() => setWatchlistCustomer(null)}
+      />
+
       {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
