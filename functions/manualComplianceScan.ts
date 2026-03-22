@@ -2,14 +2,17 @@
  * ============================================================
  * MANUAL COMPLIANCE SCAN — Intelligence Center
  * ============================================================
- * Takes a pasted regulatory notice text and runs the full
- * Hub-and-Spoke matching pipeline:
- *   GlobalLibrary → CustomerWatchlist → Customer → ComplianceAlert
+ * Strict 5-Step Relational Execution Path:
  *
- * MATCHING RULES (same as dailyRegulatoryScan):
- *   1. Match against GlobalLibrary ONLY — never legacy entities.
- *   2. Fan-out via CustomerWatchlist junction only.
- *   3. Write ComplianceAlert with customer_id + matched_library_items.
+ * Step 1 — Library Scan:    Parse notice → match against GlobalLibrary
+ *                            (ECCN hard-match OR fuzzy keyword/semantic match)
+ * Step 2 — Junction Lookup: For each matched item → find CustomerWatchlist entries
+ * Step 3 — Attr Injection:  Pull client_specific_notes + custom_severity_override from junction
+ * Step 4 — Customer Context: Pull risk_tolerance + primary_contact_email from Customer
+ * Step 5 — Alert Generation: Create one ComplianceAlert per linked customer
+ *
+ * HARD MATCH RULE: If an ECCN code in the notice exactly matches item.eccn → always is_match=true
+ * IMPACT RULE: impact_assessment = synthesis of Notice + Library Tech Specs + Client Notes
  * ============================================================
  */
 
@@ -46,6 +49,39 @@ async function runWithConcurrency(tasks, limit) {
   return results;
 }
 
+/**
+ * Extract all ECCN-like codes from a text string.
+ * ECCN format: [0-9][A-Z][0-9]{3} e.g. 3A001, 5E002, EAR99
+ */
+function extractEccns(text) {
+  const matches = text.match(/\b([0-9][A-Z][0-9]{3}[a-z]?|EAR99)\b/g) || [];
+  return matches.map(e => e.toUpperCase());
+}
+
+/**
+ * STEP 1 pre-filter: Hard ECCN match check (no LLM needed).
+ * Returns true if item.eccn appears in the notice text.
+ */
+function isHardEccnMatch(noticeText, itemEccn) {
+  if (!itemEccn) return false;
+  const noticeEccns = extractEccns(noticeText);
+  return noticeEccns.includes(itemEccn.toUpperCase().trim());
+}
+
+const severityRank = { low: 0, medium: 1, high: 2, critical: 3 };
+
+function applySeverityRules(baseSeverity, riskTolerance, customOverride) {
+  let severity = baseSeverity || 'medium';
+  // Tune by customer risk_tolerance
+  if (riskTolerance === 'high' && severityRank[severity] < severityRank['high']) severity = 'high';
+  if (riskTolerance === 'low' && severity === 'high') severity = 'medium';
+  // custom_severity_override from junction takes final precedence (only escalates)
+  if (customOverride && severityRank[customOverride] > severityRank[severity]) {
+    severity = customOverride;
+  }
+  return severity;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -64,6 +100,7 @@ Deno.serve(async (req) => {
 
     log(`[ManualScan] Started by ${user.email} at ${new Date().toISOString()}`);
 
+    // ── Load all data up-front ──────────────────────────────────────────────
     const [libraryItems, watchlistEntries, customers, configs] = await Promise.all([
       base44.asServiceRole.entities.GlobalLibrary.list(),
       base44.asServiceRole.entities.CustomerWatchlist.list(),
@@ -72,6 +109,8 @@ Deno.serve(async (req) => {
     ]);
 
     const customersMap = Object.fromEntries(customers.map(c => [c.id, c]));
+
+    // STEP 2 — Build junction map: libraryItemId → [watchlistEntry, ...]
     const itemToWatchlistMap = {};
     for (const entry of watchlistEntries) {
       if (!itemToWatchlistMap[entry.library_item_link]) itemToWatchlistMap[entry.library_item_link] = [];
@@ -79,31 +118,48 @@ Deno.serve(async (req) => {
     }
 
     const firmName = configs?.[0]?.firm_name || 'RegIntel';
-    log(`[ManualScan] ${libraryItems.length} library items, ${watchlistEntries.length} watchlist entries`);
+    const noticeEccns = extractEccns(notice_text);
+    log(`[ManualScan] ${libraryItems.length} library items | ${watchlistEntries.length} watchlist entries | ECCNs in notice: ${noticeEccns.join(', ') || 'none detected'}`);
 
     if (!libraryItems.length) {
       return Response.json({ logs, alerts: [], message: 'No library items found. Add items to GlobalLibrary first.' });
     }
 
-    // Match each GlobalLibrary item against the pasted notice
+    // ── STEP 1: Match each GlobalLibrary item against the notice ────────────
     const matchTasks = libraryItems.map(item => () =>
       withRetry(async () => {
+        // Hard ECCN match — bypass LLM entirely
+        const hardMatch = isHardEccnMatch(notice_text, item.eccn);
+        if (hardMatch) {
+          log(`[ManualScan] 🔴 HARD MATCH (ECCN ${item.eccn}) → "${item.item_name}"`);
+          return {
+            item,
+            matchResult: {
+              is_match: true,
+              is_hard_match: true,
+              base_severity: 'high',
+              rationale: `Hard match: ECCN ${item.eccn} explicitly cited in the regulatory notice.`,
+              base_impact_assessment: `This item (ECCN ${item.eccn}) is directly named in the regulatory notice and must be reviewed for compliance implications.`,
+            }
+          };
+        }
+
+        // Semantic + fuzzy LLM match
         const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
           prompt: `You are a senior export control compliance officer reviewing a regulatory notice on behalf of a consulting firm.
 
-Your task is to determine whether this regulatory notice is POTENTIALLY RELEVANT to the library item below.
-Use a LOW threshold — flag as a match if there is ANY plausible connection, including:
-  - Exact ECCN code match (e.g., notice mentions "3A001" and item has ECCN 3A001)
-  - Keyword overlap (e.g., notice says "semiconductors", item is "microprocessor" — flag it)
-  - Broad category overlap (e.g., notice affects "integrated circuits" and item is a chip)
-  - Related technology (e.g., notice mentions "TOPS", "AI chips", "advanced computing" and item is a high-performance processor)
-  - Any country, license, or classification change that could apply to this item's technology category
-  - Fuzzy / synonym matches: "semiconductor" ↔ "microprocessor", "drone" ↔ "UAV", "AI accelerator" ↔ "GPU"
+MATCHING RULES (apply in order):
+1. ECCN HARD MATCH: If the notice mentions an ECCN code that matches the item's ECCN → is_match=true, severity=high minimum.
+2. KEYWORD MATCH: If the notice mentions any keyword or synonym from the item's keyword list → is_match=true.
+3. FUZZY / SEMANTIC MATCH: Apply broad semantic reasoning:
+   - "semiconductor" ↔ "microprocessor", "chip", "integrated circuit"
+   - "drone" ↔ "UAV", "unmanned aerial vehicle"
+   - "AI accelerator" ↔ "GPU", "TOPS", "neural processing unit"
+   - "advanced computing" ↔ "high-performance processor", "HPC"
+   - Any technology category, regime, or country restriction that plausibly applies to this item.
+4. DEFAULT: When in doubt → is_match=true. Human consultants will do final review. Only set is_match=false if the notice is 100% unrelated to this item's domain.
 
-When in doubt, set is_match=true so a human consultant can review. It is better to over-flag than to miss a relevant regulation.
-Only set is_match=false if the notice is completely unrelated to this item's technology domain.
-
-Full Regulatory Notice Text:
+Full Regulatory Notice:
 """
 ${notice_text}
 """
@@ -117,10 +173,10 @@ Global Library Item:
 - Keywords: ${(item.keywords || []).join(', ') || 'N/A'}
 
 Respond with JSON:
-- is_match (boolean): true if ANY plausible connection exists
-- base_severity (string): one of "low", "medium", "high", "critical"
-- rationale (string): 1-2 sentences explaining the connection found (or why definitively excluded)
-- base_impact_assessment (string): if match, generic impact summary for this item`,
+- is_match (boolean): true if ANY plausible connection exists (err on the side of flagging)
+- base_severity (string): "low" | "medium" | "high" | "critical"
+- rationale (string): 1-2 sentences explaining exactly what triggered the match (or why excluded)
+- base_impact_assessment (string): concise generic impact summary referencing the item's tech specs`,
           model: 'gemini_3_flash',
           response_json_schema: {
             type: 'object',
@@ -132,7 +188,8 @@ Respond with JSON:
             }
           }
         });
-        return { item, matchResult: result };
+        if (result?.is_match) log(`[ManualScan] ✅ Semantic match → "${item.item_name}" (${result.base_severity})`);
+        return { item, matchResult: { ...result, is_hard_match: false } };
       })
     );
 
@@ -143,36 +200,56 @@ Respond with JSON:
     const createdAlerts = [];
 
     for (const { item, matchResult } of matched) {
+      // STEP 2 — Junction lookup
       const watchlistLinked = itemToWatchlistMap[item.id] || [];
       if (!watchlistLinked.length) {
-        log(`[ManualScan] "${item.item_name}" matched but no customers linked — skipping`);
+        log(`[ManualScan] ⚠ "${item.item_name}" matched but no customers linked in watchlist — skipping`);
         continue;
       }
 
       const alertTasks = watchlistLinked.map(entry => () =>
         withRetry(async () => {
+          // STEP 4 — Customer context
           const customer = customersMap[entry.customer_link];
-          if (!customer) return null;
-
-          const severityRank = { low: 0, medium: 1, high: 2, critical: 3 };
-          let severity = matchResult.base_severity || 'medium';
-          if (entry.custom_severity_override && severityRank[entry.custom_severity_override] > severityRank[severity]) {
-            severity = entry.custom_severity_override;
+          if (!customer) {
+            log(`[ManualScan] ⚠ Watchlist entry ${entry.id} has unresolved customer_link — skipping`);
+            return null;
           }
 
+          // STEP 3 — Attribute injection from junction
+          const clientNotes = entry.client_specific_notes || null;
+          const customOverride = entry.custom_severity_override || null;
+          const riskTolerance = customer.risk_tolerance || 'medium';
+
+          // Severity: base → risk_tolerance tuning → custom_override escalation
+          const severity = applySeverityRules(matchResult.base_severity, riskTolerance, customOverride);
+
+          // STEP 5 — Impact assessment: synthesize Notice + Library Tech Specs + Client Notes
           const personalizedImpact = await base44.asServiceRole.integrations.Core.InvokeLLM({
-            prompt: `You are a compliance advisor. Personalize this impact assessment for a specific client.
+            prompt: `You are a senior compliance advisor at ${firmName}. Write a personalized impact assessment for a specific client.
 
-Base Assessment: "${matchResult.base_impact_assessment}"
+You must synthesize THREE sources into a single, coherent assessment:
 
-Client:
-- Name: ${customer.customer_name}
+[SOURCE 1 — Regulatory Notice]
+${notice_text.slice(0, 3000)}
+
+[SOURCE 2 — Global Library Item Tech Specs]
+- Item Name: ${item.item_name}
+- Technical Description: ${item.technical_description}
+- ECCN: ${item.eccn || 'N/A'}
+- HS Code: ${item.hs_code || 'N/A'}
+- Keywords: ${(item.keywords || []).join(', ') || 'N/A'}
+- Match Rationale: ${matchResult.rationale}
+
+[SOURCE 3 — Client-Specific Context]
+- Client Name: ${customer.customer_name}
 - Industry: ${customer.industry || 'N/A'}
-- Risk Tolerance: ${customer.risk_tolerance || 'medium'}
-${entry.client_specific_notes ? `- How they use this item: "${entry.client_specific_notes}"` : ''}
+- Risk Tolerance: ${riskTolerance}
+${clientNotes ? `- How they use this item: "${clientNotes}"` : '- No client-specific usage notes on file.'}
 
-Rewrite starting with: "For ${customer.customer_name}, this change means..."
-Keep it to 2-3 sentences.`,
+Write 3-4 sentences starting with: "For ${customer.customer_name}, this regulatory change means..."
+Reference the specific technical specs and how the notice change affects this client's actual use case${clientNotes ? ' as described in their notes' : ''}.
+Be specific, actionable, and reference the regulatory source where possible.`,
             model: 'gemini_3_flash',
           });
 
@@ -194,14 +271,26 @@ Keep it to 2-3 sentences.`,
               source: 'manual_scan',
               scanned_by: user.email,
               model_version: 'gemini_3_flash',
+              is_hard_eccn_match: matchResult.is_hard_match || false,
               rationale: matchResult.rationale,
               base_severity: matchResult.base_severity,
+              risk_tolerance_applied: riskTolerance,
+              custom_severity_override: customOverride,
+              client_specific_notes_used: clientNotes,
               scan_timestamp: new Date().toISOString(),
             },
           });
 
-          log(`[ManualScan] ✅ Alert → "${customer.customer_name}" | "${item.item_name}" | ${severity.toUpperCase()}`);
-          return { alert, customer_name: customer.customer_name, item_name: item.item_name, severity, rationale: matchResult.rationale, impact_assessment: personalizedImpact };
+          log(`[ManualScan] ✅ Alert → "${customer.customer_name}" | "${item.item_name}" | ${severity.toUpperCase()}${matchResult.is_hard_match ? ' [HARD ECCN MATCH]' : ''}`);
+          return {
+            alert,
+            customer_name: customer.customer_name,
+            item_name: item.item_name,
+            severity,
+            rationale: matchResult.rationale,
+            impact_assessment: personalizedImpact,
+            is_hard_match: matchResult.is_hard_match || false,
+          };
         })
       );
 
