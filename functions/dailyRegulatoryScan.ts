@@ -40,9 +40,10 @@ async function runWithConcurrency(tasks, limit) {
   return results;
 }
 
-async function processSource(source, libraryItems, customersMap, itemToCustomersMap, firmName, base44) {
+async function processSource(source, libraryItems, customersMap, itemToWatchlistMap, firmName, base44) {
   console.log(`[Scan] Processing source: ${source.name} (${source.regime})`);
 
+  // --- PHASE 1: Fetch notices from the regulatory source ---
   const fetchResult = await withRetry(() =>
     base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: `You are a regulatory intelligence agent. Extract all new regulatory notices published in the last 24 hours from this source.
@@ -118,7 +119,7 @@ Return a concise summary of relevant regulatory content. If nothing relevant, re
 
     const consolidatedSummary = relevantSummaries.map(s => `[Chunk ${s.chunkIndex}] ${s.summary}`).join('\n\n');
 
-    // REDUCE: match each library item
+    // --- PHASE 1 (Search): Match against every GlobalLibrary item ---
     const matchTasks = libraryItems.map(item => () =>
       withRetry(async () => {
         const matchResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
@@ -133,20 +134,19 @@ Consolidated Summary:
 ${consolidatedSummary}
 """
 
-Watchlist Library Item:
+Global Library Item:
 - Name: ${item.item_name}
-- Description: ${item.description}
+- Technical Description: ${item.technical_description}
 - ECCN: ${item.eccn || 'N/A'}
 - EU Control Number: ${item.eu_control_number || 'N/A'}
-- UK Control Entry: ${item.uk_control_entry || 'N/A'}
 - HS Code: ${item.hs_code || 'N/A'}
 - Keywords: ${(item.keywords || []).join(', ') || 'N/A'}
 
-Does this notice materially affect this item? Consider direct mentions, classification codes, category changes, destination restrictions, and license requirement changes.
+Does this notice materially affect this library item? Use semantic matching on the technical description and keyword matching. Consider direct mentions, classification codes, category changes, destination restrictions, and license requirement changes.
 
 Respond with JSON:
 - is_match (boolean)
-- base_severity (string): one of "low", "medium", "high", "critical" — before customer risk tuning
+- base_severity (string): one of "low", "medium", "high", "critical"
 - rationale (string)
 - base_impact_assessment (string): generic impact summary for this item
 - matched_chunk_indices (array of integers)`,
@@ -171,25 +171,40 @@ Respond with JSON:
     for (const { item, matchResult } of matchResults) {
       if (!matchResult?.is_match) continue;
 
-      // Fan out: one alert per linked customer
-      const linkedCustomers = itemToCustomersMap[item.id] || [];
-      if (!linkedCustomers.length) {
-        console.log(`[Scan] Item "${item.item_name}" matched but has no linked customers — skipping.`);
+      // --- PHASE 2 (Fan-Out): Find all customers linked via CustomerWatchlist ---
+      const watchlistEntries = itemToWatchlistMap[item.id] || [];
+      if (!watchlistEntries.length) {
+        console.log(`[Scan] Library item "${item.item_name}" matched but has no linked customers — skipping.`);
         continue;
       }
 
-      const customerAlertTasks = linkedCustomers.map(customer => () =>
+      // --- PHASE 3 (Personalization) + PHASE 4 (Routing): One alert per customer ---
+      const customerAlertTasks = watchlistEntries.map(entry => () =>
         withRetry(async () => {
+          const customer = customersMap[entry.customer_link];
+          if (!customer) return null;
+
           const customerName = customer.customer_name || 'the client';
           const industry = customer.industry || 'their industry';
           const riskTolerance = customer.risk_tolerance || 'medium';
+          const clientNotes = entry.client_specific_notes || null;
 
-          // Tune severity per customer risk tolerance
+          // Severity: start from base, tune by risk_tolerance, then apply custom_severity_override
+          const severityRank = { low: 0, medium: 1, high: 2, critical: 3 };
           let severity = matchResult.base_severity || 'medium';
-          if (riskTolerance === 'high' && severity === 'medium') severity = 'high';
+
+          if (riskTolerance === 'high' && severityRank[severity] < severityRank['high']) severity = 'high';
           if (riskTolerance === 'low' && severity === 'high') severity = 'medium';
 
-          // Personalize impact assessment
+          // custom_severity_override from junction table takes final precedence
+          if (entry.custom_severity_override) {
+            const override = entry.custom_severity_override;
+            if (severityRank[override] > severityRank[severity]) {
+              severity = override;
+            }
+          }
+
+          // Personalized impact assessment incorporating client-specific context
           const personalizedImpact = await base44.asServiceRole.integrations.Core.InvokeLLM({
             prompt: `You are a compliance advisor. Personalize this impact assessment for a specific client.
 
@@ -199,8 +214,10 @@ Client:
 - Name: ${customerName}
 - Industry: ${industry}
 - Risk Tolerance: ${riskTolerance}
+${clientNotes ? `- How they use this item: "${clientNotes}"` : ''}
 
 Rewrite the impact assessment starting with: "For ${customerName} in the ${industry} sector, this change means..."
+${clientNotes ? `Specifically address how this impacts their usage: "${clientNotes}".` : ''}
 Keep it concise (2-3 sentences).`,
             model: 'gemini_3_flash',
           });
@@ -212,9 +229,12 @@ Keep it concise (2-3 sentences).`,
             base_severity: matchResult.base_severity,
             tuned_severity: severity,
             risk_tolerance_applied: riskTolerance,
+            custom_severity_override: entry.custom_severity_override || null,
+            client_specific_notes_used: clientNotes || null,
             scan_timestamp: new Date().toISOString(),
           };
 
+          // PHASE 4: target_recipient auto-populated from customer's primary_contact_email
           const alert = await base44.asServiceRole.entities.ComplianceAlert.create({
             title: `[${source.regime}] ${notice.title} — Impact on: ${item.item_name}`,
             customer_id: customer.id,
@@ -255,41 +275,41 @@ Deno.serve(async (req) => {
 
     console.log(`[Scan] Starting at ${new Date().toISOString()}`);
 
-    const [sources, libraryItems, links, customers, configs] = await Promise.all([
+    const [sources, libraryItems, watchlistEntries, customers, configs] = await Promise.all([
       base44.asServiceRole.entities.RegulatorySource.filter({ is_active: true }),
-      base44.asServiceRole.entities.GlobalWatchlistLibrary.filter({ status: 'active' }),
-      base44.asServiceRole.entities.CustomerLibraryLink.list(),
+      base44.asServiceRole.entities.GlobalLibrary.list(),
+      base44.asServiceRole.entities.CustomerWatchlist.list(),
       base44.asServiceRole.entities.Customer.list(),
       base44.asServiceRole.entities.GlobalConfig.list(),
     ]);
 
-    // Build lookup maps
+    // Build lookup: customerId → customer
     const customersMap = Object.fromEntries(customers.map(c => [c.id, c]));
 
-    // itemId → [customer, customer, ...]
-    const itemToCustomersMap = {};
-    for (const link of links) {
-      if (!itemToCustomersMap[link.library_item_id]) itemToCustomersMap[link.library_item_id] = [];
-      const customer = customersMap[link.customer_id];
-      if (customer) itemToCustomersMap[link.library_item_id].push(customer);
+    // Build lookup: libraryItemId → [watchlistEntry, ...]
+    // Each entry includes customer_link, library_item_link, client_specific_notes, custom_severity_override
+    const itemToWatchlistMap = {};
+    for (const entry of watchlistEntries) {
+      if (!itemToWatchlistMap[entry.library_item_link]) itemToWatchlistMap[entry.library_item_link] = [];
+      itemToWatchlistMap[entry.library_item_link].push(entry);
     }
 
     const firmName = configs?.[0]?.firm_name || 'RegIntel';
     const alertEmail = configs?.[0]?.compliance_alert_email;
 
-    console.log(`[Scan] ${sources.length} sources, ${libraryItems.length} library items, ${links.length} customer links`);
+    console.log(`[Scan] ${sources.length} sources, ${libraryItems.length} library items, ${watchlistEntries.length} watchlist entries`);
 
     if (!libraryItems.length || !sources.length) {
       return Response.json({ message: 'No active sources or library items. Scan skipped.' });
     }
 
     const sourceTasks = sources.map(source => () =>
-      processSource(source, libraryItems, customersMap, itemToCustomersMap, firmName, base44)
+      processSource(source, libraryItems, customersMap, itemToWatchlistMap, firmName, base44)
     );
     const sourceResults = await runWithConcurrency(sourceTasks, MAX_CONCURRENCY);
     const allAlerts = sourceResults.flat().filter(Boolean);
 
-    // Send personalized emails
+    // Send personalized emails to each customer
     const emailTasks = allAlerts
       .filter(({ alert }) => alert.target_recipient)
       .map(({ alert, notice, matchResult, auditMetadata, item, customer, severity, personalizedImpact }) => () =>
@@ -332,7 +352,7 @@ Generated on ${auditMetadata.scan_timestamp} by ${firmName}.`.trim(),
       console.log(`[Scan] 📧 Sent ${emailTasks.length} personalized email(s).`);
     }
 
-    // Internal admin email for high/critical
+    // Internal admin email for high/critical alerts
     if (alertEmail) {
       const adminTasks = allAlerts
         .filter(({ severity }) => ['high', 'critical'].includes(severity))
