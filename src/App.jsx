@@ -14,6 +14,7 @@ import Settings from '@/pages/Settings';
 import ClientManagement from '@/pages/ClientManagement';
 import GlobalLibrary from '@/pages/GlobalLibrary';
 import WatchlistManager from '@/pages/WatchlistManager';
+import IntelligenceCenter from '@/pages/IntelligenceCenter';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -43,6 +44,7 @@ const AuthenticatedApp = () => {
         <Route path="/ClientManagement" element={<ClientManagement />} />
         <Route path="/GlobalLibrary" element={<GlobalLibrary />} />
         <Route path="/WatchlistManager" element={<WatchlistManager />} />
+        <Route path="/IntelligenceCenter" element={<IntelligenceCenter />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

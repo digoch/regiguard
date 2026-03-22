@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { ShieldAlert, Globe, BookOpen, Settings2, LayoutDashboard, Users, Library, Link2 } from 'lucide-react';
+import { ShieldAlert, Globe, BookOpen, Settings2, LayoutDashboard, Users, Library, Link2, Brain } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const nav = [
@@ -8,6 +8,7 @@ const nav = [
   { to: '/ClientManagement', icon: <Users className="w-4 h-4" />, label: 'Clients' },
   { to: '/GlobalLibrary', icon: <Library className="w-4 h-4" />, label: 'Library' },
   { to: '/WatchlistManager', icon: <Link2 className="w-4 h-4" />, label: 'Watchlist' },
+  { to: '/IntelligenceCenter', icon: <Brain className="w-4 h-4" />, label: 'Intelligence' },
   { to: '/Alerts', icon: <ShieldAlert className="w-4 h-4" />, label: 'Alerts' },
   { to: '/Sources', icon: <Globe className="w-4 h-4" />, label: 'Sources' },
   { to: '/AuditLedger', icon: <BookOpen className="w-4 h-4" />, label: 'Audit Ledger' },
