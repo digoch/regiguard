@@ -14,6 +14,7 @@ import AuditLedger from '@/pages/AuditLedger';
 import Settings from '@/pages/Settings';
 import ClientManagement from '@/pages/ClientManagement';
 import GlobalLibrary from '@/pages/GlobalLibrary';
+import WatchlistManager from '@/pages/WatchlistManager';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
