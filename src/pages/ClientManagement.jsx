@@ -26,7 +26,7 @@ export default function ClientManagement() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [watchlistCustomer, setWatchlistCustomer] = useState(null);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   const fetchCustomers = async () => {

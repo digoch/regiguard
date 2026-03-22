@@ -7,6 +7,7 @@ const nav = [
   { to: '/Dashboard', icon: <LayoutDashboard className="w-4 h-4" />, label: 'Dashboard' },
   { to: '/ClientManagement', icon: <Users className="w-4 h-4" />, label: 'Clients' },
   { to: '/GlobalLibrary', icon: <Library className="w-4 h-4" />, label: 'Library' },
+  { to: '/WatchlistManager', icon: <ListChecks className="w-4 h-4" />, label: 'Watchlist' },
   { to: '/Alerts', icon: <ShieldAlert className="w-4 h-4" />, label: 'Alerts' },
   { to: '/Sources', icon: <Globe className="w-4 h-4" />, label: 'Sources' },
   { to: '/AuditLedger', icon: <BookOpen className="w-4 h-4" />, label: 'Audit Ledger' },

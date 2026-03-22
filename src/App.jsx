@@ -44,6 +44,7 @@ const AuthenticatedApp = () => {
         <Route path="/Settings" element={<Settings />} />
         <Route path="/ClientManagement" element={<ClientManagement />} />
         <Route path="/GlobalLibrary" element={<GlobalLibrary />} />
+        <Route path="/WatchlistManager" element={<WatchlistManager />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
