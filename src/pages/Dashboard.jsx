@@ -18,7 +18,7 @@ export default function Dashboard() {
     Promise.all([
       base44.entities.ComplianceAlert.list('-created_date', 50),
       base44.entities.RegulatorySource.filter({ is_active: true }),
-      base44.entities.Customer.list(),
+      base44.entities.Customer.list('-created_date', 500),
     ]).then(([a, s, c]) => { setAlerts(a); setSources(s); setCustomers(c); setLoading(false); });
   }, []);
 
