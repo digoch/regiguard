@@ -26,6 +26,9 @@ function AlertResultCard({ alert }) {
             <Badge className={`text-xs border ${severityColors[alert.severity] || severityColors.medium}`}>
               {alert.severity?.toUpperCase()}
             </Badge>
+            {alert.is_hard_match && (
+              <Badge className="text-xs border bg-red-600 text-white border-red-700">🔴 HARD ECCN</Badge>
+            )}
             <span className="font-semibold text-slate-900 text-sm truncate">{alert.item_name}</span>
             <span className="text-slate-400 text-xs">→</span>
             <span className="text-blue-700 text-sm font-medium">{alert.customer_name}</span>
