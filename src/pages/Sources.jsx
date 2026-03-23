@@ -26,8 +26,8 @@ export default function Sources() {
   const load = () => base44.entities.RegulatorySource.list('-created_date', 100).then(d => { setSources(d); setLoading(false); });
   useEffect(() => { load(); }, []);
 
-  const openNew = () => { setForm(EMPTY); setEditing(null); setOpen(true); };
-  const openEdit = (s) => { setForm({ ...s, notice_types_to_watch: s.notice_types_to_watch || [] }); setEditing(s.id); setOpen(true); };
+  const openNew = () => { setForm(EMPTY); setEditing(null); setUrlValidated(false); setOpen(true); };
+  const openEdit = (s) => { setForm({ ...s, notice_types_to_watch: s.notice_types_to_watch || [] }); setEditing(s.id); setUrlValidated(true); setOpen(true); };
 
   const toggleNoticeType = (type) => {
     const curr = form.notice_types_to_watch || [];
