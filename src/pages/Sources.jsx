@@ -116,7 +116,7 @@ export default function Sources() {
                 ))}
               </div>
             </div>
-            <Button onClick={save} disabled={saving || !form.name || !form.feed_url} className="w-full">{saving ? 'Saving...' : 'Save'}</Button>
+            <Button onClick={save} disabled={saving || !form.name || !form.feed_url || !urlValidated} className="w-full">{saving ? 'Saving...' : 'Save'}</Button>
           </div>
         </DialogContent>
       </Dialog>
