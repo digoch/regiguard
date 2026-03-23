@@ -97,9 +97,10 @@ export default function Sources() {
                 <SelectContent>{['US_BIS', 'EU', 'UK'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <label className="text-xs text-slate-500 mb-1 block">Feed URL *</label>
-              <Input value={form.feed_url} onChange={e => setForm({ ...form, feed_url: e.target.value })} placeholder="https://..." />
+              <Input value={form.feed_url} onChange={e => { setForm({ ...form, feed_url: e.target.value }); setUrlValidated(false); }} placeholder="https://..." />
+              <SourceValidationPanel feedUrl={form.feed_url} onValidated={setUrlValidated} />
             </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Scraping Logic / Instructions</label>
