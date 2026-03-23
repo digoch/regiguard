@@ -327,16 +327,27 @@ export default function WatchlistManager() {
                           ) : <span className="text-slate-300 text-xs">AI default</span>}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1"
-                            disabled={removing === entry.id}
-                            onClick={() => handleRemove(entry.id)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            {removing === entry.id ? 'Removing...' : 'Remove'}
-                          </Button>
+                         <div className="flex items-center justify-end gap-1">
+                           <Button
+                             size="sm"
+                             variant="ghost"
+                             className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 gap-1"
+                             onClick={() => openEdit(entry)}
+                           >
+                             <Pencil className="w-3.5 h-3.5" />
+                             Edit
+                           </Button>
+                           <Button
+                             size="sm"
+                             variant="ghost"
+                             className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1"
+                             disabled={removing === entry.id}
+                             onClick={() => handleRemove(entry.id)}
+                           >
+                             <Trash2 className="w-3.5 h-3.5" />
+                             {removing === entry.id ? 'Removing...' : 'Remove'}
+                           </Button>
+                         </div>
                         </td>
                       </tr>
                     );
