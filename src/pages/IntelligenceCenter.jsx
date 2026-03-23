@@ -81,7 +81,7 @@ export default function IntelligenceCenter() {
   const handleRun = async () => {
     if (!noticeText.trim()) return;
     setRunning(true);
-    setLogs(['[System] Starting compliance scan...']);
+    setLogs(['[LexSense Engine] Initiating Semantic Match...']);
     setAlerts([]);
     setDone(false);
     setError('');
