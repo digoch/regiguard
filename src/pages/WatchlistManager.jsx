@@ -131,6 +131,25 @@ export default function WatchlistManager() {
     load();
   };
 
+  const openEdit = (entry) => {
+    setEditEntry(entry);
+    setEditForm({
+      client_specific_notes: entry.client_specific_notes || '',
+      custom_severity_override: entry.custom_severity_override || '',
+    });
+  };
+
+  const handleEditSave = async () => {
+    setEditSaving(true);
+    await base44.entities.CustomerWatchlist.update(editEntry.id, {
+      client_specific_notes: editForm.client_specific_notes || undefined,
+      custom_severity_override: editForm.custom_severity_override || undefined,
+    });
+    setEditSaving(false);
+    setEditEntry(null);
+    load();
+  };
+
   const handleRemove = async (id) => {
     setRemoving(id);
     await base44.entities.CustomerWatchlist.delete(id);
