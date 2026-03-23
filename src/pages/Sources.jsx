@@ -21,6 +21,7 @@ export default function Sources() {
   const [form, setForm] = useState(EMPTY);
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [urlValidated, setUrlValidated] = useState(false);
 
   const load = () => base44.entities.RegulatorySource.list('-created_date', 100).then(d => { setSources(d); setLoading(false); });
   useEffect(() => { load(); }, []);
