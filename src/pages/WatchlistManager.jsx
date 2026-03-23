@@ -134,14 +134,19 @@ export default function WatchlistManager() {
   const openEdit = (entry) => {
     setEditEntry(entry);
     setEditForm({
+      customer_link: entry.customer_link || '',
+      library_item_link: entry.library_item_link || '',
       client_specific_notes: entry.client_specific_notes || '',
       custom_severity_override: entry.custom_severity_override || '',
     });
   };
 
   const handleEditSave = async () => {
+    if (!editForm.customer_link || !editForm.library_item_link) return;
     setEditSaving(true);
     await base44.entities.CustomerWatchlist.update(editEntry.id, {
+      customer_link: editForm.customer_link,
+      library_item_link: editForm.library_item_link,
       client_specific_notes: editForm.client_specific_notes || undefined,
       custom_severity_override: editForm.custom_severity_override || undefined,
     });
