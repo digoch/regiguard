@@ -374,20 +374,41 @@ export default function WatchlistManager() {
           </DialogHeader>
 
           {editEntry && (() => {
-            const customer = customerMap[editEntry.customer_link];
-            const lib = libraryMap[editEntry.library_item_link];
+            const customerChanged = editForm.customer_link !== editEntry.customer_link;
+            const itemChanged = editForm.library_item_link !== editEntry.library_item_link;
+            const connectionChanged = customerChanged || itemChanged;
             return (
               <div className="space-y-4">
-                {/* Read-only connections */}
-                <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                {/* Editable connections */}
+                <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <Label className="text-xs text-slate-400 mb-1 block">Customer (read-only)</Label>
-                    <p className="text-sm font-medium text-slate-700">{customer?.customer_name || '—'}</p>
+                    <Label className="text-xs text-slate-500 mb-1 block">Customer *</Label>
+                    <SearchableSelect
+                      items={customers}
+                      value={editForm.customer_link}
+                      onChange={v => setEditForm(f => ({ ...f, customer_link: v }))}
+                      placeholder="Select customer..."
+                      getLabel={c => c.customer_name}
+                      getValue={c => c.id}
+                    />
                   </div>
                   <div>
-                    <Label className="text-xs text-slate-400 mb-1 block">Library Item (read-only)</Label>
-                    <p className="text-sm font-medium text-slate-700">{lib?.item_name || '—'}{lib?.eccn ? ` (${lib.eccn})` : ''}</p>
+                    <Label className="text-xs text-slate-500 mb-1 block">Library Item *</Label>
+                    <SearchableSelect
+                      items={libraryItems}
+                      value={editForm.library_item_link}
+                      onChange={v => setEditForm(f => ({ ...f, library_item_link: v }))}
+                      placeholder="Select library item..."
+                      getLabel={l => `${l.item_name}${l.eccn ? ` (${l.eccn})` : ''}`}
+                      getValue={l => l.id}
+                    />
                   </div>
+                  {connectionChanged && (
+                    <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                      <span className="mt-0.5">ℹ️</span>
+                      <span>Note: Changing the core connection will re-route future alerts. Existing alerts tied to the previous connection will remain archived under their original IDs.</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Editable fields */}
