@@ -444,7 +444,7 @@ export default function WatchlistManager() {
             <Button variant="outline" onClick={() => setEditEntry(null)} disabled={editSaving}>
               <X className="w-4 h-4 mr-1" /> Cancel
             </Button>
-            <Button onClick={handleEditSave} disabled={editSaving}>
+            <Button onClick={handleEditSave} disabled={editSaving || !editForm.customer_link || !editForm.library_item_link}>
               <Check className="w-4 h-4 mr-1" />
               {editSaving ? 'Saving...' : 'Save Changes'}
             </Button>
