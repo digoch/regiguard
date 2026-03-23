@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Globe, Plus, Pencil } from 'lucide-react';
+import SourceValidationPanel from '@/components/SourceValidationPanel';
 
 const EMPTY = { name: '', regime: 'US_BIS', feed_url: '', scraping_logic: '', notice_types_to_watch: [], is_active: true };
 const NOTICE_TYPES = ['final_rule', 'proposed_rule', 'interim_rule', 'guidance', 'amendment'];
