@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Globe, Plus, Pencil } from 'lucide-react';
+import { Globe, Plus, Pencil, ArrowLeft } from 'lucide-react';
 import SourceValidationPanel from '@/components/SourceValidationPanel';
 
 const EMPTY = { name: '', regime: 'US_BIS', feed_url: '', scraping_logic: '', notice_types_to_watch: [], is_active: true };
