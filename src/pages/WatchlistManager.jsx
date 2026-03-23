@@ -84,6 +84,9 @@ export default function WatchlistManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(null);
+  const [editEntry, setEditEntry] = useState(null); // entry being edited
+  const [editForm, setEditForm] = useState({ client_specific_notes: '', custom_severity_override: '' });
+  const [editSaving, setEditSaving] = useState(false);
 
   const [form, setForm] = useState({
     customer_link: preFilteredCustomerId,
