@@ -124,7 +124,7 @@ export default function IntelligenceCenter() {
         <div className="flex items-center gap-3">
           <Brain className="w-7 h-7 text-blue-600" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">LexSense Intelligence Center</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Intelligence Center</h1>
             <p className="text-sm text-slate-500">Manually test the compliance scan engine against a regulatory notice</p>
           </div>
         </div>

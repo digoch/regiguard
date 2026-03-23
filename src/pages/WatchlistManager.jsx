@@ -183,7 +183,7 @@ export default function WatchlistManager() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
               <Link2 className="w-6 h-6 text-slate-700" />
-              LexSense Watchlist Nexus
+              Watchlist Manager
               {preFilteredCustomer && (
                 <span className="text-blue-600">— {preFilteredCustomer.customer_name}</span>
               )}
