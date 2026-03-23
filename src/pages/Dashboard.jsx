@@ -43,7 +43,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2"><img src={LOGO_URL} alt="LexSense" className="w-9 h-9 object-contain mix-blend-multiply" /> Dashboard</h1>
+          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2"><img src={LOGO_URL} alt="LexSense" className="w-9 h-9 object-contain" style={{mixBlendMode: 'multiply'}} /> Dashboard</h1>
           <p className="text-slate-500 mt-1">LexSense is active. Monitoring global ECCN/HS updates for your connected clients.</p>
         </div>
 
