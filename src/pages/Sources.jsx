@@ -139,44 +139,7 @@ export default function Sources() {
         }
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editing ? 'Edit' : 'Add'} Regulatory Source</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Source Name *</label>
-              <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Regime</label>
-              <Select value={form.regime} onValueChange={v => setForm({ ...form, regime: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{['US_BIS', 'EU', 'UK'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs text-slate-500 mb-1 block">Feed URL *</label>
-              <Input value={form.feed_url} onChange={e => { setForm({ ...form, feed_url: e.target.value }); setUrlValidated(false); }} placeholder="https://..." />
-              <SourceValidationPanel feedUrl={form.feed_url} onValidated={setUrlValidated} />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Scraping Logic / Instructions</label>
-              <Textarea value={form.scraping_logic} onChange={e => setForm({ ...form, scraping_logic: e.target.value })} className="h-24" placeholder="Describe how to extract notices from this source..." />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-2 block">Notice Types to Watch</label>
-              <div className="flex flex-wrap gap-2">
-                {NOTICE_TYPES.map(t => (
-                  <Badge key={t} onClick={() => toggleNoticeType(t)} className={`cursor-pointer ${(form.notice_types_to_watch || []).includes(t) ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                    {t.replace('_', ' ')}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-            <Button onClick={save} disabled={saving || !form.name || !form.feed_url || !urlValidated} className="w-full">{saving ? 'Saving...' : 'Save'}</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }
