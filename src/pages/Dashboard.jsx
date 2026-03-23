@@ -3,9 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { Globe, BookOpen, AlertTriangle, CheckCircle2, Clock, Users, ShieldAlert } from 'lucide-react';
-
-const LOGO_URL = "https://media.base44.com/images/public/69ba6d0ca5a91905d233f849/7284640c8_Gemini_Generated_Image_29t6nw29t6nw29t6.png";
+import { ShieldAlert, Globe, BookOpen, AlertTriangle, CheckCircle2, Clock, Users } from 'lucide-react';
 
 const severityColor = { low: 'bg-blue-100 text-blue-700', medium: 'bg-yellow-100 text-yellow-700', high: 'bg-orange-100 text-orange-700', critical: 'bg-red-100 text-red-700' };
 const statusIcon = { pending: <Clock className="w-4 h-4 text-yellow-500" />, under_review: <AlertTriangle className="w-4 h-4 text-orange-500" />, confirmed: <CheckCircle2 className="w-4 h-4 text-green-500" />, dismissed: <CheckCircle2 className="w-4 h-4 text-gray-400" /> };
@@ -43,7 +41,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2"><img src={LOGO_URL} alt="LexSense" className="w-9 h-9 object-contain" style={{mixBlendMode: 'multiply'}} /> Dashboard</h1>
+          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2"><ShieldAlert className="w-8 h-8 text-slate-700" /> Dashboard</h1>
           <p className="text-slate-500 mt-1">LexSense is active. Monitoring global ECCN/HS updates for your connected clients.</p>
         </div>
 

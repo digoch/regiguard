@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Globe, BookOpen, Settings2, LayoutDashboard, Users, Library, Link2, Brain, ShieldAlert } from 'lucide-react';
-
-const LOGO_URL = "https://media.base44.com/images/public/69ba6d0ca5a91905d233f849/7284640c8_Gemini_Generated_Image_29t6nw29t6nw29t6.png";
+import { ShieldAlert, Globe, BookOpen, Settings2, LayoutDashboard, Users, Library, Link2, Brain } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const nav = [
@@ -32,9 +30,7 @@ export default function Layout() {
       <aside className="w-56 bg-slate-900 text-slate-200 flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-slate-700">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded overflow-hidden bg-white/10 flex items-center justify-center">
-              <img src={LOGO_URL} alt="LexSense" className="w-full h-full object-cover" />
-            </div>
+            <ShieldAlert className="w-5 h-5 text-blue-400" />
             <span className="font-bold text-sm text-white">LexSense</span>
           </div>
           <p className="text-xs text-slate-500 mt-1">Precision Regulatory Guidance</p>
