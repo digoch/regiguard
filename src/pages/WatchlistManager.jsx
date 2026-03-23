@@ -358,6 +358,73 @@ export default function WatchlistManager() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editEntry} onOpenChange={open => !open && setEditEntry(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4" /> Edit Watchlist Link
+            </DialogTitle>
+          </DialogHeader>
+
+          {editEntry && (() => {
+            const customer = customerMap[editEntry.customer_link];
+            const lib = libraryMap[editEntry.library_item_link];
+            return (
+              <div className="space-y-4">
+                {/* Read-only connections */}
+                <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div>
+                    <Label className="text-xs text-slate-400 mb-1 block">Customer (read-only)</Label>
+                    <p className="text-sm font-medium text-slate-700">{customer?.customer_name || '—'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-400 mb-1 block">Library Item (read-only)</Label>
+                    <p className="text-sm font-medium text-slate-700">{lib?.item_name || '—'}{lib?.eccn ? ` (${lib.eccn})` : ''}</p>
+                  </div>
+                </div>
+
+                {/* Editable fields */}
+                <div>
+                  <Label className="text-xs text-slate-500 mb-1 block">Client Notes</Label>
+                  <Textarea
+                    value={editForm.client_specific_notes}
+                    onChange={e => setEditForm(f => ({ ...f, client_specific_notes: e.target.value }))}
+                    placeholder="e.g., Used in Project X drone engines..."
+                    className="h-24"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-500 mb-1 block">Priority Override</Label>
+                  <Select
+                    value={editForm.custom_severity_override || '_none'}
+                    onValueChange={v => setEditForm(f => ({ ...f, custom_severity_override: v === '_none' ? '' : v }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">None (use AI default)</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            );
+          })()}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditEntry(null)} disabled={editSaving}>
+              <X className="w-4 h-4 mr-1" /> Cancel
+            </Button>
+            <Button onClick={handleEditSave} disabled={editSaving}>
+              <Check className="w-4 h-4 mr-1" />
+              {editSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
