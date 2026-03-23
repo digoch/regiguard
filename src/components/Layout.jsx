@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { ShieldAlert, Globe, BookOpen, Settings2, LayoutDashboard, Users, Library, Link2, Brain } from 'lucide-react';
+import { Globe, BookOpen, Settings2, LayoutDashboard, Users, Library, Link2, Brain, ShieldAlert } from 'lucide-react';
+
+const LOGO_URL = "https://media.base44.com/images/public/69ba6d0ca5a91905d233f849/7284640c8_Gemini_Generated_Image_29t6nw29t6nw29t6.png";
 import { base44 } from '@/api/base44Client';
 
 const nav = [

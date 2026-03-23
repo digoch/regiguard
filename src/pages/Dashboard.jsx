@@ -3,7 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { ShieldAlert, Globe, BookOpen, AlertTriangle, CheckCircle2, Clock, Users } from 'lucide-react';
+import { Globe, BookOpen, AlertTriangle, CheckCircle2, Clock, Users, ShieldAlert } from 'lucide-react';
+
+const LOGO_URL = "https://media.base44.com/images/public/69ba6d0ca5a91905d233f849/7284640c8_Gemini_Generated_Image_29t6nw29t6nw29t6.png";
 
 const severityColor = { low: 'bg-blue-100 text-blue-700', medium: 'bg-yellow-100 text-yellow-700', high: 'bg-orange-100 text-orange-700', critical: 'bg-red-100 text-red-700' };
 const statusIcon = { pending: <Clock className="w-4 h-4 text-yellow-500" />, under_review: <AlertTriangle className="w-4 h-4 text-orange-500" />, confirmed: <CheckCircle2 className="w-4 h-4 text-green-500" />, dismissed: <CheckCircle2 className="w-4 h-4 text-gray-400" /> };
