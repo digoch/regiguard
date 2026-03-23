@@ -31,7 +31,7 @@ export default function Layout() {
         <div className="px-5 py-5 border-b border-slate-700">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-blue-400" />
-            <span className="font-bold text-sm text-white">{firmName}</span>
+            <span className="font-bold text-sm text-white">LexSense | Israeli Tech Sentinel</span>
           </div>
           <p className="text-xs text-slate-500 mt-1">Regulatory Portal</p>
         </div>
