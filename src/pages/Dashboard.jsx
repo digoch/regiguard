@@ -42,7 +42,7 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2"><ShieldAlert className="w-8 h-8 text-slate-700" /> Dashboard</h1>
-          <p className="text-slate-500 mt-1">Automated export control compliance monitoring</p>
+          <p className="text-slate-500 mt-1">LexSense is active. Monitoring global ECCN/HS updates for your connected clients.</p>
         </div>
 
         {/* KPI Cards */}
