@@ -32,7 +32,7 @@ export default function Layout() {
       <aside className="w-56 bg-slate-900 text-slate-200 flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-slate-700">
           <div className="flex items-center gap-2">
-            <img src={LOGO_URL} alt="LexSense" className="w-7 h-7 object-contain rounded" style={{mixBlendMode: 'screen'}} />
+            <img src={LOGO_URL} alt="LexSense" className="w-7 h-7 object-contain" style={{mixBlendMode: 'luminosity', filter: 'invert(1) hue-rotate(180deg)'}} />
             <span className="font-bold text-sm text-white">LexSense</span>
           </div>
           <p className="text-xs text-slate-500 mt-1">Precision Regulatory Guidance</p>
