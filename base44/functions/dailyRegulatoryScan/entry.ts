@@ -232,7 +232,7 @@ Respond with JSON:
 
           // Personalized impact assessment incorporating client-specific context
           const personalizedImpact = await base44.asServiceRole.integrations.Core.InvokeLLM({
-            prompt: `You are a compliance advisor. Personalize this impact assessment for a specific client.
+            prompt: `You are the LexSense Intelligence Engine. Your goal is to provide high-fidelity Regulatory Sensing by matching Global Library ECCNs to Customer Watchlists. Your tone is professional, precise, and analytical.
 
 Base Assessment: "${matchResult.base_impact_assessment}"
 
@@ -242,9 +242,12 @@ Client:
 - Risk Tolerance: ${riskTolerance}
 ${clientNotes ? `- How they use this item: "${clientNotes}"` : ''}
 
-Rewrite the impact assessment starting with: "For ${customerName} in the ${industry} sector, this change means..."
+Write AI Guidance starting with: "For ${customerName} in the ${industry} sector, this change means..."
 ${clientNotes ? `Specifically address how this impacts their usage: "${clientNotes}".` : ''}
-Keep it concise (2-3 sentences).`,
+Keep it concise (2-3 sentences), then provide exactly 3 bulleted Recommended Actions formatted as:
+• [Action 1]
+• [Action 2]
+• [Action 3]`,
             model: 'gemini_3_flash',
           });
 

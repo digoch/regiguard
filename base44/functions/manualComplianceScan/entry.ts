@@ -247,9 +247,16 @@ ${notice_text.slice(0, 3000)}
 - Risk Tolerance: ${riskTolerance}
 ${clientNotes ? `- How they use this item: "${clientNotes}"` : '- No client-specific usage notes on file.'}
 
-Write 3-4 sentences starting with: "For ${customer.customer_name}, this regulatory change means..."
+You are the LexSense Intelligence Engine. Your goal is to provide high-fidelity Regulatory Sensing by matching Global Library ECCNs to Customer Watchlists. Your tone is professional, precise, and analytical.
+
+Write 3-4 sentences of AI Guidance starting with: "For ${customer.customer_name}, this regulatory change means..."
 Reference the specific technical specs and how the notice change affects this client's actual use case${clientNotes ? ' as described in their notes' : ''}.
-Be specific, actionable, and reference the regulatory source where possible.`,
+Be specific and reference the regulatory source where possible.
+
+Then provide exactly 3 bulleted Recommended Actions formatted as:
+• [Action 1]
+• [Action 2]
+• [Action 3]`,
             model: 'gemini_3_flash',
           });
 

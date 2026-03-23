@@ -31,9 +31,9 @@ export default function Layout() {
         <div className="px-5 py-5 border-b border-slate-700">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-blue-400" />
-            <span className="font-bold text-sm text-white">{firmName}</span>
+            <span className="font-bold text-sm text-white">LexSense</span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">Regulatory Portal</p>
+          <p className="text-xs text-slate-500 mt-1">Precision Regulatory Guidance</p>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
           {nav.map(n => (
