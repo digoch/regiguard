@@ -18,27 +18,31 @@ export default function SourceValidationPanel({ feedUrl, onValidated }) {
     setValidating(true);
     setResults(null);
 
-    const response = await base44.integrations.Core.InvokeLLM({
+    // Step 1: Real HTTP reachability check
+    const reachabilityRes = await base44.functions.invoke('checkUrlReachability', { url: feedUrl });
+    const realReachable = reachabilityRes?.data?.reachable ?? false;
+    const realReachableReason = reachabilityRes?.data?.reason ?? 'Could not determine reachability.';
+
+    // Step 2: LLM checks for recognition + extraction (reachability is now real, pass the result in)
+    const llmResponse = await base44.integrations.Core.InvokeLLM({
       prompt: `You are a regulatory data quality analyst. Evaluate the following URL as a potential regulatory data source for an export control compliance platform.
 
 URL: ${feedUrl}
 
-Run these three checks and return your assessment:
+Note: A live HTTP check has already confirmed that this URL is ${realReachable ? 'REACHABLE (site responded successfully)' : 'NOT REACHABLE (site did not respond or returned an error)'}.
 
-1. SITE REACHABILITY: Based on the URL structure and domain, is this likely a live, accessible website? (Consider: is the domain well-formed, does it look like a real domain, is it using https?)
+Run these two checks and return your assessment:
 
-2. DOCUMENT RECOGNITION: Is this URL from a government, intergovernmental, or official regulatory body? (e.g., .gov, .europa.eu, bis.gov, commerce.gov, trade.ec.europa.eu, gov.uk, customs domains, etc.) OR is it a blog, news site, or unofficial source?
+1. DOCUMENT RECOGNITION: Is this URL from a government, intergovernmental, or official regulatory body? (e.g., .gov, .europa.eu, bis.gov, commerce.gov, trade.ec.europa.eu, gov.uk, customs domains, etc.) OR is it a blog, news site, or unofficial source?
 
-3. AI EXTRACTION SIMULATION: Based on the URL and domain context, would an AI be likely to find structured regulatory content such as ECCN codes, HS codes, control list amendments, export license requirements, or country restriction notices at this URL?
+2. AI EXTRACTION SIMULATION: Based on the URL and domain context, would an AI be likely to find structured regulatory content such as ECCN codes, HS codes, control list amendments, export license requirements, or country restriction notices at this URL?
 
-Also provide a confidence_score (integer 0-100) representing overall trustworthiness as a regulatory data source.
+Also provide a confidence_score (integer 0-100) representing overall trustworthiness as a regulatory data source. If the site is not reachable, cap confidence_score at 0.
 
 Respond with JSON only.`,
       response_json_schema: {
         type: 'object',
         properties: {
-          reachability: { type: 'boolean' },
-          reachability_reason: { type: 'string' },
           recognition: { type: 'boolean' },
           recognition_reason: { type: 'string' },
           extraction: { type: 'boolean' },
@@ -48,10 +52,20 @@ Respond with JSON only.`,
       }
     });
 
-    setResults(response);
+    const combined = {
+      reachability: realReachable,
+      reachability_reason: realReachableReason,
+      recognition: realReachable ? (llmResponse?.recognition ?? false) : false,
+      recognition_reason: realReachable ? (llmResponse?.recognition_reason ?? '') : 'Skipped — site is not reachable.',
+      extraction: realReachable ? (llmResponse?.extraction ?? false) : false,
+      extraction_reason: realReachable ? (llmResponse?.extraction_reason ?? '') : 'Skipped — site is not reachable.',
+      confidence_score: realReachable ? (llmResponse?.confidence_score ?? 0) : 0,
+    };
+
+    setResults(combined);
     setValidating(false);
 
-    const allPass = response?.reachability && response?.recognition && response?.extraction;
+    const allPass = combined.reachability && combined.recognition && combined.extraction;
     onValidated(allPass);
   };
 
