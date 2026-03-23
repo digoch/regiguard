@@ -40,6 +40,64 @@ export default function Sources() {
     setSaving(false); setOpen(false); load();
   };
 
+  // Full-page form view
+  if (open) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center gap-3 mb-6">
+            <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">{editing ? 'Edit' : 'Add'} Regulatory Source</h1>
+              <p className="text-sm text-slate-500">Configure a new regulatory feed for automated scanning</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-5">
+            <div>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">Source Name *</label>
+              <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g., BIS Federal Register" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">Regime</label>
+              <Select value={form.regime} onValueChange={v => setForm({ ...form, regime: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{['US_BIS', 'EU', 'UK'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-slate-500 mb-1 block">Feed URL *</label>
+              <Input value={form.feed_url} onChange={e => { setForm({ ...form, feed_url: e.target.value }); setUrlValidated(false); }} placeholder="https://..." />
+              <SourceValidationPanel feedUrl={form.feed_url} onValidated={setUrlValidated} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">Scraping Logic / Instructions</label>
+              <Textarea value={form.scraping_logic} onChange={e => setForm({ ...form, scraping_logic: e.target.value })} className="h-28" placeholder="Describe how to extract notices from this source..." />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-500 mb-2 block">Notice Types to Watch</label>
+              <div className="flex flex-wrap gap-2">
+                {NOTICE_TYPES.map(t => (
+                  <Badge key={t} onClick={() => toggleNoticeType(t)} className={`cursor-pointer ${(form.notice_types_to_watch || []).includes(t) ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                    {t.replace('_', ' ')}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setOpen(false)} className="flex-1">Cancel</Button>
+              <Button onClick={save} disabled={saving || !form.name || !form.feed_url || !urlValidated} className="flex-1">
+                {saving ? 'Saving...' : 'Save Source'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const toggleActive = async (source) => {
     await base44.entities.RegulatorySource.update(source.id, { is_active: !source.is_active });
     load();
