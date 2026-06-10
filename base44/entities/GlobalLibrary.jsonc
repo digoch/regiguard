@@ -1,0 +1,41 @@
+{
+  "type": "object",
+  "properties": {
+    "library_item_id": {
+      "type": "string",
+      "description": "Unique human-readable identifier for this controlled item (e.g., ECCN-EAR99-001)"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Common name of the controlled item (e.g., High-Performance Microprocessor)"
+    },
+    "eccn": {
+      "type": "string",
+      "description": "Export Control Classification Number under US EAR"
+    },
+    "eu_control_number": {
+      "type": "string",
+      "description": "EU Dual-Use Regulation control list entry number"
+    },
+    "hs_code": {
+      "type": "string",
+      "description": "Harmonized System (HS) tariff code"
+    },
+    "technical_description": {
+      "type": "string",
+      "description": "Detailed technical description used for AI semantic matching against regulatory notices"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags and synonyms to assist search and AI keyword matching"
+    }
+  },
+  "required": [
+    "item_name",
+    "technical_description"
+  ],
+  "name": "GlobalLibrary"
+}

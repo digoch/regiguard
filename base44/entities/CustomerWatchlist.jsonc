@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "properties": {
+    "customer_link": {
+      "type": "string",
+      "description": "ID of the Customer entity this watchlist entry belongs to",
+      "relation": "Customer"
+    },
+    "library_item_link": {
+      "type": "string",
+      "description": "ID of the GlobalLibrary entity being tracked for this customer",
+      "relation": "GlobalLibrary"
+    },
+    "client_specific_notes": {
+      "type": "string",
+      "description": "How this specific item is used by this client (e.g., 'Used in Project X drone engines')"
+    },
+    "custom_severity_override": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "description": "Manual severity boost for this item/client pairing \u2014 overrides the AI default if set"
+    }
+  },
+  "required": [
+    "customer_link",
+    "library_item_link"
+  ],
+  "name": "CustomerWatchlist"
+}

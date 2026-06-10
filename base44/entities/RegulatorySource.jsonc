@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "regime": {
+      "type": "string",
+      "enum": [
+        "US_BIS",
+        "EU",
+        "UK"
+      ]
+    },
+    "feed_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "scraping_logic": {
+      "type": "string"
+    },
+    "notice_types_to_watch": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "final_rule",
+          "proposed_rule",
+          "interim_rule",
+          "guidance",
+          "amendment"
+        ]
+      }
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "regime",
+    "feed_url",
+    "scraping_logic",
+    "notice_types_to_watch"
+  ],
+  "name": "RegulatorySource"
+}

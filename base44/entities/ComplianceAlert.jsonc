@@ -1,0 +1,124 @@
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "ID of the Customer entity this alert belongs to. Populated from the CustomerWatchlist junction during AI scan.",
+      "relation": "Customer"
+    },
+    "target_recipient": {
+      "type": "string",
+      "format": "email",
+      "description": "Primary contact email of the Customer \u2014 auto-populated from Customer.primary_contact_email"
+    },
+    "source": {
+      "type": "string",
+      "description": "ID of the RegulatorySource entity that triggered this alert",
+      "relation": "RegulatorySource"
+    },
+    "notice_type": {
+      "type": "string",
+      "enum": [
+        "final_rule",
+        "proposed_rule",
+        "interim_rule",
+        "guidance",
+        "amendment"
+      ]
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "publication_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "matched_library_items": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of GlobalLibrary item IDs that matched this notice."
+    },
+    "matched_watchlist_entries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of CustomerWatchlist junction entry IDs that triggered this alert."
+    },
+    "matched_countries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of Country IDs"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "ai_guidance": {
+      "type": "string",
+      "description": "AI Guidance: personalized impact assessment with 3 bulleted Recommended Actions for this client."
+    },
+    "impact_assessment": {
+      "type": "string",
+      "description": "Legacy alias for ai_guidance \u2014 kept for backwards compatibility."
+    },
+    "ai_proposed_severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "confirmed_severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "under_review",
+        "confirmed",
+        "dismissed"
+      ],
+      "default": "pending"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "review_notes": {
+      "type": "string"
+    },
+    "audit_metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Stores details about the LLM decision for auditing: chunk_index, model_version, rationale, token_usage, scan_timestamp."
+    }
+  },
+  "required": [
+    "title",
+    "customer_id",
+    "source",
+    "notice_type",
+    "source_url",
+    "publication_date",
+    "matched_library_items",
+    "summary",
+    "ai_proposed_severity"
+  ],
+  "name": "ComplianceAlert"
+}

@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "firm_name": {
+      "type": "string",
+      "description": "The name of the firm (e.g., PwC Israel), used as a variable across the app"
+    },
+    "compliance_alert_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email address for High/Critical compliance alerts"
+    }
+  },
+  "required": [
+    "firm_name",
+    "compliance_alert_email"
+  ],
+  "name": "GlobalConfig"
+}

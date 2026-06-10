@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "iso_code": {
+      "type": "string"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "sanctioned",
+        "high_risk",
+        "restricted",
+        "standard"
+      ]
+    },
+    "applicable_regimes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "US_BIS",
+          "EU",
+          "UK"
+        ]
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "iso_code",
+    "risk_level"
+  ],
+  "name": "Country"
+}

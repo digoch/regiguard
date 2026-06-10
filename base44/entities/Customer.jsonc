@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Unique human-readable client identifier (e.g., IAI-001)"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Full legal name of the client (e.g., Israel Aerospace Industries)"
+    },
+    "industry": {
+      "type": "string",
+      "description": "Client's primary industry (e.g., Aerospace, Fintech, Defense)"
+    },
+    "risk_tolerance": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "description": "Client's risk tolerance level \u2014 used to tune AI severity assessments"
+    },
+    "primary_contact_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email address where compliance alerts will be sent for this client"
+    },
+    "internal_notes": {
+      "type": "string",
+      "description": "Private notes for the firm's internal records \u2014 not shared with the client"
+    }
+  },
+  "required": [
+    "customer_name",
+    "primary_contact_email"
+  ],
+  "name": "Customer"
+}
